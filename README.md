@@ -1,11 +1,8 @@
 1)  This repository contains the scripts and functions for the exact 
     homotopy method based on gradient inclusions.
 
-2)  As for Jan 25 2024, there are two major scripts: one for comparing
-    different implementations of the exact Lasso method, and one that
-    compares one implementation of the exact lasso method with the  
-    i) glmnet algorithm and ii) first-order FISTA with improved screening
-    rule.
+2)  The scripts are in the main working directory, while the functions
+    are located in the appropriate ./src directories.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Some notes regarding the script that compares different implementations
