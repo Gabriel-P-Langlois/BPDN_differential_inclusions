@@ -1,0 +1,1 @@
+The data was given to me by Andrew Giuliani sometime in May 2023 (or earlier, possibly February)

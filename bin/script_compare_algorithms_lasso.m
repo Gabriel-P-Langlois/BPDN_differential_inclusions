@@ -5,13 +5,10 @@
 % Written by Gabriel Provencher Langlois
 
 
-%% Notes
-
-
 %% Options for the script
 % Specify whether to use FISTA or glmnet or both.
-use_fista = true;
-use_glmnet = true;
+use_fista = false;
+use_glmnet = false;
 
 % Option to output the result at each iteration of the exact
 % lasso algorithm implementations.
@@ -40,10 +37,10 @@ rng('default')
 % SNR = 1 (medium noise)
 % Values are all set to 1
 
-m = 1000; n = 10000;     % Number of samples and features
+m = 200; n = 10000;     % Number of samples and features
 k_num = m;              % Number of true nonzero coefficients
 val = 1;                % Value of nonzero coefficients
-prop = k_num/n;         % Proportion of coefficients that are equal to val.
+prop = 0.005*n;         % Proportion of coefficients that are equal to val.
 SNR = 1;                % Signal to noise ratio
 
 % Design matrix + Normalize it
@@ -76,6 +73,20 @@ disp('----------')
 
 lambda = exact_path; lambda(end) = [];
 length_path = length(lambda);
+
+
+% Slightly different version...
+tic
+[sol_exact_x2,sol_exact_p2,exact_path] = ...
+    lasso_homotopy_solver_v2(A,b,tol_exact,display_iterations);
+time_exact_total2 = toc;
+
+disp(['Total time elasped for the exact Lasso algorithm: ',...
+    num2str(time_exact_total2), ' seconds.'])
+disp('----------')
+
+lambda = exact_path; lambda(end) = [];
+length_path2 = length(lambda);
 
 
 %% Method 2: The FISTA algorithm with (improved) screening rule
@@ -165,6 +176,7 @@ end
 % each kink (MSE). If accurate, this number should be close
 % to machine precision.
 %%%%%%%%%%%%%%%
+
 % Homotopy method (via gradient inclusions)
 check_opt_cond_1_exact = 0;
 for i=1:1:length(exact_path)-1
@@ -339,19 +351,19 @@ if(use_glmnet)
 end
 
 % i) Plot the ratio of the values of the primal problems at every kink.
-if(use_fista && use_glmnet)
+if(use_glmnet)
 figure(1)
-    subplot(1,3,1)
-    plot(1:m,val_primal_exact./val_primal_fista)
-    title('Ratio of 0.5*normsq(Ax-b)+t*normone(x) vs t (exact/fista)')
+   % subplot(1,3,1)
+   % plot(1:m,val_primal_exact./val_primal_fista)
+   % title('Ratio of 0.5*normsq(Ax-b)+t*normone(x) vs t (exact/fista)')
     
-    subplot(1,3,2)
+    figure(1)
     plot(1:m,val_primal_exact./val_primal_glmnet)
     title('Ratio of 0.5*normsq(Ax-b)+t*normone(x) vs t (exact/glmnet)')
     
-    subplot(1,3,3)
-    plot(1:m,val_primal_glmnet./val_primal_fista)
-    title('Ratio of 0.5*normsq(Ax-b)+t*normone(x) vs t (glmnet/fista)')
+    %subplot(1,3,3)
+    %plot(1:m,val_primal_glmnet./val_primal_fista)
+    %title('Ratio of 0.5*normsq(Ax-b)+t*normone(x) vs t (glmnet/fista)')
     %
     % Important note (from GPL): In the plots I obtain, I always see
     % exact >= fista and exact >= glmnet. What I also find, however, is that
@@ -368,21 +380,20 @@ figure(1)
     norm_exact_axb = exact_path.'.*vecnorm(sol_exact_p,2);
     norm_exact_axb = norm_exact_axb(1:end-1);
     
-    norm_fista_axb = vecnorm(sol_fista_p,2);
+    %norm_fista_axb = vecnorm(sol_fista_p,2);
     norm_glmnet_axb = vecnorm(sol_glmnet_p,2);
     
     figure(2)
-    subplot(1,3,1)
-    plot(1:m,norm_exact_axb./norm_fista_axb)
-    title('Ratio of norm(Ax-b) vs t (exact/fista)')
+    %subplot(1,3,1)
+    %plot(1:m,norm_exact_axb./norm_fista_axb)
+    %title('Ratio of norm(Ax-b) vs t (exact/fista)')
     
-    subplot(1,3,2)
     plot(1:m,norm_exact_axb./norm_glmnet_axb)
     title('Ratio of norm(Ax-b) vs t (exact/glmnet)')
     
-    subplot(1,3,3)
-    plot(1:m,norm_glmnet_axb./norm_fista_axb)
-    title('Ratio of norm(Ax-b) vs t (glmnet/fista)')
+    %subplot(1,3,3)
+    %plot(1:m,norm_glmnet_axb./norm_fista_axb)
+    %title('Ratio of norm(Ax-b) vs t (glmnet/fista)')
     %
     % Important note (from GPL): In the plots above, I get that
     % norm(Ax-b,2) is smaller using the solution obtained from the homotopy
@@ -392,6 +403,29 @@ figure(1)
     % x precisely so that norm(Ax-b) is minimized at every iteration of the 
     % homotopy algorithm. This suggests that the homotopy method
     % is doing the right thing.
+
+    % Plot MSE of both the exact algorithm and GLMNET on top of one another
+    figure(3)
+    subplot(1,2,1)
+    mse_exact = vecnorm(A*sol_exact_x-b,2).^2;
+    mse_exact = mse_exact(1:end-1)/(norm(b)^2);
+
+    plot(1:m,mse_exact,'LineWidth',2)
+    hold on
+
+    mse_glmnet = vecnorm(A*sol_glmnet_x-b,2).^2;
+    plot(1:m,mse_glmnet/(norm(b)^2),'LineWidth',2)
+    hold off
+        legend('Exact algorithm', 'GLMNET Algorithm')
+    title('Ratio of the mean squared errors ||Ax-b||^2 to ||b||^2')
+
+    subplot(1,2,2)
+    plot(901:m,mse_exact(901:end),'LineWidth',2)
+    hold on
+    plot(901:m,mse_glmnet(901:end)/(norm(b)^2),'LineWidth',2)
+
+    legend('Exact algorithm', 'GLMNET Algorithm')
+    title('Ratio of the mean squared errors ||Ax-b||^2 to ||b||^2 (zoom in)')
 end
 
 

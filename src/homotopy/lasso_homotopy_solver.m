@@ -21,7 +21,7 @@ t0 = norm(tmp1,inf);
 tmp1 = tmp1/t0;
 
 moving_term_1 = [tmp1;-tmp1];
-active_set = (moving_term_1 >= tol_minus); % Checks for 
+active_set = (moving_term_1 >= tol_minus);
 
 % Store first time and first dual solution
 exact_path(1) = t0;
@@ -32,13 +32,14 @@ sol_exact_p(:,1) = bminus/t0;
 shall_continue = true;
 i = 0; max_iters = m;
 
-while(shall_continue && i < max_iters)
+while(shall_continue && i < m) %max_iters
     i=i+1;
 
     %%% 1. Cone projection
     % We compute min_{x} normsq{A_{active}*x + b}
     K = [A(:,active_set(1:n)),-A(:,active_set(n+1:end))];
     u_active = K\b;
+    
 
     % Express solution direction back to Rn coordinates
     tmp = zeros(2*n,1); tmp(active_set) = u_active;
@@ -49,12 +50,13 @@ while(shall_continue && i < max_iters)
 
     %%% 3. Compute kick time (A.'*direction)
     tmp2 = (direction.'*A).';
+
     moving_term_2 = [tmp2;-tmp2]; 
 
     active_set_plus = (moving_term_2 > tol);
     if (any(active_set_plus))
-        vec = -(moving_term_1-1)./moving_term_2;
-        timestep = min(vec(active_set_plus));
+        vec = -(moving_term_1(active_set_plus)-1)./moving_term_2(active_set_plus);
+        timestep = min(vec);
     else % Stop; termination condition satisfied.
         sol_exact_x(:,i+1) = x_active; 
         break;
