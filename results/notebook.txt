@@ -1,0 +1,26 @@
+
+May 7th: GPL rearranged the structure of the project repository to something more amenable.
+	- 	The least-squares approach does not work... GPL messed up here.
+	- 	The rest of the work, however, still stands: the choice of the initial condition in the differential inclusions problem
+		is enough to get that the trajectory is one-to-one with the solution of the BPDN problem.
+		Since there are active set methods for computing the NNLS problem, it means that we can solve the BPDN problem
+		and the BP problem to machine precision. Moreover, the approach also works when the data is rational.
+
+		This is, by itself, a good result.
+
+		There remains, however, two issues: 1) bounding the total number of iterations taken by the algorithm
+		and 2) bounding the number of iterations requires for the NNLS problem.
+
+		GPL wonders if Stan Osher approach for the Lasso problem works better in this particular situation...
+
+		- The focus now should be on updating the draft and add the missing details.
+		- Also update the homotopy solver to further simplify the NNLS problem.
+		- Maybe the paper should be refocused to something theoretical... or show the equivalence
+
+
+--- Notes about experiments ---
+
+The experiment random_m=500_n=20000_SNR=6 solve the homotopy problem with Gaussian random data design with m = 500 samples
+and n=20000 features and a signal-to-noise ratio (SNR=6).
+
+Running the experiment with lsqnonneg takes about ~ seconds.
