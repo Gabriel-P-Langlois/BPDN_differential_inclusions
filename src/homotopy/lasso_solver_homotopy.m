@@ -4,7 +4,7 @@
 
 
 function [sol_exact_x,sol_exact_p,exact_path] = ...
-    lasso_solver_homotopy(A,b,m,n,tol,display_iterations)
+    lasso_solver_homotopy(A,b,m,n,tol,display_iterations,use_tests)
 
 
 %% Initialization
@@ -39,20 +39,28 @@ while(shall_continue)
     equicorrelation_set = (abs(moving_term_1) >= tol_minus); 
     K = A(:,equicorrelation_set);
     D = diag(sign(-moving_term_1(equicorrelation_set)));
-    
 
     %%%%% 2. Solve the NNLS problem + store the solution u = D*v
     % Method 1
     v = lsqnonneg(K*D,b);
     u = zeros(n,1); u(equicorrelation_set) = D*v;
+    disp("Solution found by NNLS multiplied by matrix of signs")
+    disp(D*v)
 
-    % Test
-    %M = K*D;
-    %test1 = M\(b + sol_exact_p(:,i)*exact_path(i));
-    %disp(v)
-    %test2 = lsqnonneg(M,b + sol_exact_p(:,i)*exact_path(i));
-    %disp(test2)
-    %disp('---')
+    % Least-squares
+    if(use_tests)
+        ntrue = length(K(1,:))/2;
+        Atrue = K(:,1:ntrue);
+        vtest = Atrue\b;
+        disp("Solution by augmented least squares")
+        disp(vtest)
+
+        disp("Test 1")
+        disp(K\b)
+
+        disp("Sum")
+        disp(K\b - D*v)
+    end
 
     %%%%% 3. Compute the descent direction
     descent_direction = (K*u(equicorrelation_set) + bminus);
@@ -93,13 +101,6 @@ while(shall_continue)
     % Update the primal solution
     alpha = exact_path(i+1)/exact_path(i);
     sol_exact_x(:,i+1) = alpha*sol_exact_x(:,i) + (1-alpha)*u; 
-
-    % TEST
-    if(exact_path(i)*timestep >= 1)
-        disp('CHECK')
-        disp(exact_path(i))
-        disp(timestep)
-    end
 
     %%%%% OPTIONAL. If enabled, display current iteration
     if(display_iterations)
