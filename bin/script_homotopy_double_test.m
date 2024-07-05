@@ -34,7 +34,7 @@ rng('default')
 % SNR = 1 (medium noise)
 % Values are all set to 1
 
-m = 10; n = 30;     % Number of samples and features
+m = 20; n = 50;     % Number of samples and features
 k_num = m;              % Number of true nonzero coefficients
 val = 1;                % Value of nonzero coefficients
 prop = 0.005*n;         % Proportion of coefficients that are equal to val.
@@ -76,21 +76,3 @@ sol_exact_p(:,length_path+1:end) = [];
 
 % Test
 disp(norm(A*sol_exact_x(:,end)-b))
-
-
-%% Method 2: Exact Lasso with A --> [A,-A] trick
-Aaug = [A,-A];
-tic
-[sol_exact_x_2,sol_exact_p_2,exact_path_2] = ...
-    lasso_solver_homotopy(Aaug,b,m,2*n,tol_exact,display_iterations,true);
-time_exact_total_2 = toc;
-
-disp(['Total time elasped for the exact Lasso algorithm: ',...
-    num2str(time_exact_total_2), ' seconds.'])
-disp('----------')
-
-% Remove superfluous components of the path at the end
-length_path_2 = 1 + length(find(exact_path_2));
-sol_path_2 = exact_path(1:length_path_2); 
-sol_exact_x_2(:,length_path_2+1:end) = [];
-sol_exact_p_2(:,length_path_2+1:end) = [];

@@ -44,26 +44,31 @@ while(shall_continue)
     % Method 1
     v = lsqnonneg(K*D,b);
     u = zeros(n,1); u(equicorrelation_set) = D*v;
-    disp("Solution found by NNLS multiplied by matrix of signs")
-    disp(D*v)
 
-    % Least-squares
-    if(use_tests)
-        ntrue = length(K(1,:))/2;
-        Atrue = K(:,1:ntrue);
-        vtest = Atrue\b;
-        disp("Solution by augmented least squares")
-        disp(vtest)
-
-        disp("Test 1")
-        disp(K\b)
-
-        disp("Sum")
-        disp(K\b - D*v)
-    end
+    % % Least-squares
+    % if(use_tests)
+    %     ntrue = length(K(1,:))/2;
+    %     Atrue = K(:,1:ntrue);
+    %     vtest = Atrue\b;
+    %     disp("Solution by augmented least squares")
+    %     disp(vtest)
+    % 
+    %     disp("Test 1")
+    %     disp(K\b)
+    % 
+    %     disp("Sum")
+    %     disp(K\b - D*v)
+    % end
 
     %%%%% 3. Compute the descent direction
     descent_direction = (K*u(equicorrelation_set) + bminus);
+
+
+    %%%%% TESTING
+    %test1 = -exact_path(i)*sol_exact_p(:,i) + descent_direction;
+    %disp(test1.*descent_direction)
+    disp(dot(-exact_path(i)*sol_exact_p(:,i) + descent_direction, descent_direction));
+
 
     % Compute the variable moving_term_2 (= -A.'*d)
     moving_term_2 = (descent_direction.'*A).'; 
@@ -94,6 +99,11 @@ while(shall_continue)
     % Update the dual solution + time parameter
     sol_exact_p(:,i+1) = sol_exact_p(:,i) + timestep*descent_direction;
     exact_path(i+1) = exact_path(i)/(1+exact_path(i)*timestep);
+
+    %%%%% TESTING
+    %test1 = -exact_path(i)*sol_exact_p(:,i) + descent_direction;
+    %disp(test1.*descent_direction)
+    disp(dot(-exact_path(i+1)*sol_exact_p(:,i+1) + descent_direction, descent_direction));
 
     % Update the variable moving_term_1 (= -A.'*p(exact_path(i + 1)))
     moving_term_1 = moving_term_1 + timestep*moving_term_2;
