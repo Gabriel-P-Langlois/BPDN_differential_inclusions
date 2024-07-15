@@ -2,9 +2,9 @@
 % Exact homotopy algorithm -- Written by Gabriel Provencher Langlois
 
 
-
+%%
 function [sol_x,sol_p,exact_path] = ...
-    lasso_solver_homotopy(A,b,m,n,tol,display_iterations,run_diagnostics)
+    lasso_solver_homotopy_debug_v2(A,b,m,n,tol,display_iterations,run_diagnostics)
 
 
 %% Initialization
@@ -54,6 +54,7 @@ while(shall_continue && k <= buffer_path)
     % Compute the set of descent directions (abs(<d,Aej>) > 0)
     active_set_plus = abs(moving_term_2) > tol;
     
+   
 
     %%%%% 4. Compute the kick time
     % Note 1: This is the `smallest' amount of time we can slide down
@@ -64,6 +65,7 @@ while(shall_continue && k <= buffer_path)
     if (any(active_set_plus))
         term1 = diag(vector_of_signs)*moving_term_2;
         sign_coeffs = sign(term1);
+
         term2 = -diag(vector_of_signs)*Atop_times_pk;
 
         vec = (1+sign_coeffs(active_set_plus).*term2(active_set_plus))./...
@@ -74,6 +76,22 @@ while(shall_continue && k <= buffer_path)
         sol_x(:,k+1) = v; 
         break;
     end
+
+    % %%%%% 4.5 Compute another time...
+    % ind1 = (sol_x(equicorrelation_set,k) > tol) & (v(equicorrelation_set) < -tol);
+    % ind2 = (sol_x(equicorrelation_set,k) < -tol) & (v(equicorrelation_set) > tol);
+    % ind3 = ind1 | ind2;
+    % 
+    % disp(sol_x(equicorrelation_set,k))
+    % disp(v(equicorrelation_set))
+    % 
+    % if(ind3)
+    %     timestep2 = min(abs(sol_x(ind3,k)./v(ind3))/exact_path(k));
+    %     disp([num2str(timestep),' and ',num2str(timestep2)])
+    % end
+    % 
+    % % TESTS
+    
 
 
     %%%%% 5. Update all solutions and variables
@@ -103,11 +121,6 @@ while(shall_continue && k <= buffer_path)
         [~,quantity_1,~] = lsqnonneg(K*D,b + exact_path(k)*sol_p(:,k));
         disp(['Diagnostic I: Computing min_{u >= 0} ||K*D*u - (b+tk*pk)||^2: ',num2str(quantity_1)]);
 
-        for h = [0.1,0.5,0.9,1]
-            tmp = (1-h)*exact_path(k)*sol_p(:,k) + h*d;
-            [~,tmp2,~] = lsqnonneg(K*D,b + tmp);
-            disp(num2str(tmp2))
-        end
         disp(' ')
 
         % Display when the solution is strictly positive

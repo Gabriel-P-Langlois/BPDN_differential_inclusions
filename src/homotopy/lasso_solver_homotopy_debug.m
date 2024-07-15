@@ -2,9 +2,12 @@
 % Exact homotopy algorithm -- Written by Gabriel Provencher Langlois
 
 
+%% NOTES
 
+
+%%
 function [sol_x,sol_p,exact_path] = ...
-    lasso_solver_homotopy(A,b,m,n,tol,display_iterations,run_diagnostics)
+    lasso_solver_homotopy_debug(A,b,m,n,tol,display_iterations,run_diagnostics)
 
 
 %% Initialization
@@ -36,6 +39,9 @@ while(shall_continue && k <= buffer_path)
     % Note: We also compute the relevant signs and store them
     equicorrelation_set = (abs(Atop_times_pk) >= tol_minus); 
     vector_of_signs = sign(-Atop_times_pk);
+
+
+
     D = diag(vector_of_signs(equicorrelation_set));
     K = A(:,equicorrelation_set);
     
@@ -54,6 +60,7 @@ while(shall_continue && k <= buffer_path)
     % Compute the set of descent directions (abs(<d,Aej>) > 0)
     active_set_plus = abs(moving_term_2) > tol;
     
+   
 
     %%%%% 4. Compute the kick time
     % Note 1: This is the `smallest' amount of time we can slide down
@@ -64,6 +71,7 @@ while(shall_continue && k <= buffer_path)
     if (any(active_set_plus))
         term1 = diag(vector_of_signs)*moving_term_2;
         sign_coeffs = sign(term1);
+
         term2 = -diag(vector_of_signs)*Atop_times_pk;
 
         vec = (1+sign_coeffs(active_set_plus).*term2(active_set_plus))./...
@@ -73,6 +81,40 @@ while(shall_continue && k <= buffer_path)
     else
         sol_x(:,k+1) = v; 
         break;
+    end
+
+    
+    %% TEST
+    if(any(u <= tol))
+        ind = find(u <= tol);
+        Ktest = K;  Ktest(:,ind) = [];
+        tmp3 = vector_of_signs(equicorrelation_set); tmp3(ind) = [];
+        Dtest = diag(tmp3);
+
+        utest = lsqnonneg(Ktest*Dtest,b);
+        dtest = Ktest*(Dtest*utest) - b;
+        disp(norm(d-dtest)) % Identical...
+
+        moving_term_test = (dtest.'*A).';
+        active_set_test = abs(moving_term_test) > tol;
+        
+        if any(active_set_test)
+            term1 = diag(vector_of_signs)*moving_term_test;
+            sign_coeffs = sign(term1);
+            term2 = -diag(vector_of_signs)*Atop_times_pk;
+
+            vec = (1+sign_coeffs(active_set_test).*term2(active_set_test))./...
+                abs(term1(active_set_test));
+
+        timestep_test = min(vec);
+        else
+            break;
+        end
+
+        %%
+        disp('------')
+        disp(abs(timestep-timestep_test)) % still identical
+        disp('------')
     end
 
 
@@ -109,6 +151,19 @@ while(shall_continue && k <= buffer_path)
             disp(num2str(tmp2))
         end
         disp(' ')
+
+        htest = 0.99;
+        tmp3 = sol_p(:,k) + htest*timestep*d;
+        tmp4 = exact_path(k)/(1+exact_path(k)*htest*timestep);
+        tmp5 = A.'*tmp3;
+
+        equitest = abs(tmp5) >= tol_minus;
+
+        vector_of_signs = sign(-tmp5);
+        Dtest = diag(vector_of_signs(equitest));
+        Ktest = A(:,equitest);
+        [~,quantity2,~] = lsqnonneg(Ktest*Dtest,b + tmp4*tmp3);
+        disp(quantity2)
 
         % Display when the solution is strictly positive
         if(any(u <= tol))

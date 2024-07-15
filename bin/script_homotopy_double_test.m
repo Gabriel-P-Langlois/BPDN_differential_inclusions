@@ -1,7 +1,5 @@
 %% Description
 % This script compares the performance of my exact homotopy method.
-% this script tests the A --> [A,-A] trick...
-
 % Written by Gabriel Provencher Langlois
 
 
@@ -14,10 +12,11 @@ display_iterations = true;
 % Option to output the result at each iteration of the FISTA algorithm.
 display_output_fista = false;
 
+% Run diagnostics
+run_diagnostics = true;
+
 % Tolerances + minimum number of iterations for the FISTA algorithm
 tol_exact = 1e-10;
-tol_fista = 1e-04;  min_iters_fista = 100;
-RelTol_glmnet = 1e-04;  % Default: 1e-04
 
 % Random seed
 rng('default')
@@ -34,7 +33,7 @@ rng('default')
 % SNR = 1 (medium noise)
 % Values are all set to 1
 
-m = 20; n = 50;     % Number of samples and features
+m = 50; n = 500;     % Number of samples and features
 k_num = m;              % Number of true nonzero coefficients
 val = 1;                % Value of nonzero coefficients
 prop = 0.005*n;         % Proportion of coefficients that are equal to val.
@@ -53,15 +52,14 @@ sigma = norm(A*xsol)/sqrt(SNR);
 b = (A*xsol + sqrt(sigma)*randn(m,1));
 
 
-%% Method 1: Exact Lasso algorithm
-% Note: We use the standard solver for this.
+%% Homotopy algorithm
 disp(' ')
 disp('----------')
 disp('The homotopy method (via gradient inclusions) for the Lasso.')
 
 tic
 [sol_exact_x,sol_exact_p,exact_path] = ...
-    lasso_solver_homotopy(A,b,m,n,tol_exact,display_iterations,false);
+    lasso_solver_homotopy(A,b,m,n,tol_exact,display_iterations,run_diagnostics);
 time_exact_total = toc;
 
 disp(['Total time elasped for the exact Lasso algorithm: ',...
@@ -73,6 +71,3 @@ length_path = 1 + length(find(exact_path));
 sol_path = exact_path(1:length_path); 
 sol_exact_x(:,length_path+1:end) = [];
 sol_exact_p(:,length_path+1:end) = [];
-
-% Test
-disp(norm(A*sol_exact_x(:,end)-b))

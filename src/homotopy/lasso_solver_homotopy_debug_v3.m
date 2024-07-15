@@ -1,10 +1,12 @@
 %% Description -- lasso_homotopy_solver_opt
 % Exact homotopy algorithm -- Written by Gabriel Provencher Langlois
 
+% I'm completely stumped.
 
 
+%%
 function [sol_x,sol_p,exact_path] = ...
-    lasso_solver_homotopy(A,b,m,n,tol,display_iterations,run_diagnostics)
+    lasso_solver_homotopy_debug_v3(A,b,m,n,tol,display_iterations,run_diagnostics)
 
 
 %% Initialization
@@ -36,6 +38,7 @@ while(shall_continue && k <= buffer_path)
     % Note: We also compute the relevant signs and store them
     equicorrelation_set = (abs(Atop_times_pk) >= tol_minus); 
     vector_of_signs = sign(-Atop_times_pk);
+    
     D = diag(vector_of_signs(equicorrelation_set));
     K = A(:,equicorrelation_set);
     
@@ -46,7 +49,7 @@ while(shall_continue && k <= buffer_path)
 
 
     %%%%% 3. Compute the descent direction
-    d = (K*v(equicorrelation_set) + bminus);
+    d = K*v(equicorrelation_set) -b;
 
     % Compute the variable moving_term_2 (= A.'*d)
     moving_term_2 = (d.'*A).'; 
@@ -54,7 +57,6 @@ while(shall_continue && k <= buffer_path)
     % Compute the set of descent directions (abs(<d,Aej>) > 0)
     active_set_plus = abs(moving_term_2) > tol;
     
-
     %%%%% 4. Compute the kick time
     % Note 1: This is the `smallest' amount of time we can slide down
     % over the possible set of directions before changing the active set.
@@ -64,6 +66,7 @@ while(shall_continue && k <= buffer_path)
     if (any(active_set_plus))
         term1 = diag(vector_of_signs)*moving_term_2;
         sign_coeffs = sign(term1);
+
         term2 = -diag(vector_of_signs)*Atop_times_pk;
 
         vec = (1+sign_coeffs(active_set_plus).*term2(active_set_plus))./...
@@ -74,7 +77,6 @@ while(shall_continue && k <= buffer_path)
         sol_x(:,k+1) = v; 
         break;
     end
-
 
     %%%%% 5. Update all solutions and variables
     % Update the dual solution + time parameter
@@ -94,7 +96,7 @@ while(shall_continue && k <= buffer_path)
         disp(['Iteration ',num2str(k),' is complete.'])
     end
 
-    % If enable, run diagnostics
+    % If enabled, run diagnostics
     if(run_diagnostics)
         disp(['Iteration: ', num2str(k)])
         disp(' ')
@@ -103,21 +105,47 @@ while(shall_continue && k <= buffer_path)
         [~,quantity_1,~] = lsqnonneg(K*D,b + exact_path(k)*sol_p(:,k));
         disp(['Diagnostic I: Computing min_{u >= 0} ||K*D*u - (b+tk*pk)||^2: ',num2str(quantity_1)]);
 
-        for h = [0.1,0.5,0.9,1]
-            tmp = (1-h)*exact_path(k)*sol_p(:,k) + h*d;
-            [~,tmp2,~] = lsqnonneg(K*D,b + tmp);
-            disp(num2str(tmp2))
-        end
         disp(' ')
 
         % Display when the solution is strictly positive
+        qty = -A.'*sol_p(:,k);
         if(any(u <= tol))
             disp('Diagnostic II: At least one component of the NNLS problem is zero.')
+
+            % disp('Check xk vs -Atoppk')
+            % disp(sol_x(equicorrelation_set,k))
+            % disp(qty(equicorrelation_set))
+            % disp(length(sol_x(equicorrelation_set,k)))
+            % 
+            % disp('D*uk')
+            % disp(v(equicorrelation_set))
+            % 
+            % 
+            % 
+            % new_ind = (abs(Atop_times_pk) >= tol_minus); 
+            % disp('Check xkplus1 vs -Atoppkplus1')
+            % disp(sol_x(equicorrelation_set,k+1))
+            % disp(-Atop_times_pk(equicorrelation_set));
+            % disp(length(sol_x(new_ind,k+1)))
+            % 
+            % disp('-D*Atop*pk -timestep*D*Atop*d')
+            % disp(D*qty(equicorrelation_set) - D*timestep*A(:,equicorrelation_set).'*d)
+            % disp(- D*timestep*A(:,equicorrelation_set).'*d)
         else
             disp('Diagnostic II: All components of the NNLS are strictly positive.')
         end
         
-        % 
+        % Check that norminf(Atop_times_pk) is = 1.
+        disp(['Diagnostic III: Check that norminf(Atop_times_pk) is equal to one: ',num2str(norm(qty,inf))])
+
+        % Check that tkpk = Axk - b
+        disp('Diagnostic V: Check the OC: tkpk = Axk-b')
+        lhs = exact_path(k)*sol_p(:,k);
+        rhs = A*sol_x(:,k) - b;
+        if(norm(lhs-rhs) > tol)
+            disp('fail')
+            break
+        end
 
         disp(' ')
         disp(' ')

@@ -37,7 +37,7 @@ rng('default')
 % SNR = 1 (medium noise)
 % Values are all set to 1
 
-m = 100; n = 3000;     % Number of samples and features
+m = 100; n = 300;     % Number of samples and features
 k_num = m;              % Number of true nonzero coefficients
 val = 1;                % Value of nonzero coefficients
 prop = 0.005*n;         % Proportion of coefficients that are equal to val.
