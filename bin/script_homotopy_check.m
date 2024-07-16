@@ -1,25 +1,16 @@
-function script_homotopy_check(use_fista,run_diagnostics,...
-    display_iterations)
-%Description
-%   This script compares the performance of my exact homotopy method.
-%
-%   INPUT:
-%
-%       use_fista:  Boolean variable. Set to true to use the FISTA
-%                   algorithm and compare the output with the homotopy
-%                   algorithm.
-%
-%       run_diagnostics:    Boolean variable. Run additional tests if
-%                           set to true.
-%
+%%  Description
 %   Written by Gabriel Provencher Langlois.
 
 
 %% Options for the script
+display_iterations = false;
+run_diagnostics = true;
+use_fista = true;
+
 % Options for the FISTA algorithm
 if(use_fista)
     display_output_fista = true;
-    tol_fista = 1e-08;
+    tol_fista = 1e-10;
     min_iters_fista = 40;
 end
 
@@ -41,7 +32,7 @@ rng('default')
 % SNR = 1 (medium noise)
 % Values are all set to 1
 
-m = 50; n = 500;        % Number of samples and features
+m = 40; n = 200;        % Number of samples and features
 k_num = floor(n/50);     % Number of true nonzero coefficients
 val = 1;                % Value of nonzero coefficients
 SNR = 1;                % Signal to noise ratio
@@ -149,7 +140,7 @@ end
 if(use_fista && run_diagnostics)
     % Compute the MSE between homotopy sol - FISTA sol -- Primal 
     MSE_primal_homotopy_fista = 0;
-    for i=1:1:length(sol_path)-1
+    for i=2:1:length(sol_path)-1
         var = norm(sol_exact_x(:,i)-sol_fista_x(:,i))^2;
         MSE_primal_homotopy_fista = MSE_primal_homotopy_fista + var;
         disp(['Iteration: ',num2str(i),': (Norm of homotopy sol - FISTA sol)/norm(FISTA sol): ',...
@@ -165,7 +156,7 @@ if(use_fista && run_diagnostics)
 
     % Compute the MSE between homotopy sol - FISTA sol -- Dual
     MSE_dual_homotopy_fista = 0;
-    for i=1:1:length(sol_path)-1
+    for i=2:1:length(sol_path)-1
         var = norm(sol_exact_p(:,i)-sol_fista_p(:,i))^2;
         MSE_dual_homotopy_fista = MSE_dual_homotopy_fista + var;
         disp(['Iteration: ',num2str(i),': (Norm of homotopy sol - FISTA sol)/norm(FISTA sol): ',...
@@ -176,5 +167,4 @@ if(use_fista && run_diagnostics)
     disp(['MSE between homotopy sol and FISTA sol: ',...
         num2str(MSE_dual_homotopy_fista)])
     disp(' ')
-end
 end

@@ -1,8 +1,6 @@
 %% Description -- lasso_homotopy_solver_opt
 % Exact homotopy algorithm -- Written by Gabriel Provencher Langlois
 
-
-
 function [sol_x,sol_p,exact_path] = ...
     lasso_solver_homotopy(A,b,m,n,tol,display_iterations,run_diagnostics)
 
@@ -18,7 +16,7 @@ t0 = norm(Atop_times_pk,inf);
 Atop_times_pk = Atop_times_pk/t0;
 
 % Create solution paths + initialize
-buffer_path = 5*m;
+buffer_path = 10*m;
 sol_p = zeros(m,buffer_path); 
 exact_path = zeros(1,buffer_path);
 sol_x = zeros(n,buffer_path);
@@ -49,10 +47,10 @@ while(shall_continue && k <= buffer_path)
     d = (K*v(equicorrelation_set) + bminus);
 
     % Compute the variable moving_term_2 (= A.'*d)
-    moving_term_2 = (d.'*A).'; 
+    Atop_times_dk = (d.'*A).'; 
 
     % Compute the set of descent directions (abs(<d,Aej>) > 0)
-    active_set_plus = abs(moving_term_2) > tol;
+    active_set_plus = abs(Atop_times_dk) > tol;
     
 
     %%%%% 4. Compute the kick time
@@ -62,7 +60,7 @@ while(shall_continue && k <= buffer_path)
     % Note 2: If there are no possible set of directions, then 
     % timestep = inf and we have converged.
     if (any(active_set_plus))
-        term1 = diag(vector_of_signs)*moving_term_2;
+        term1 = diag(vector_of_signs)*Atop_times_dk;
         sign_coeffs = sign(term1);
         term2 = -diag(vector_of_signs)*Atop_times_pk;
 
@@ -82,7 +80,7 @@ while(shall_continue && k <= buffer_path)
     exact_path(k+1) = exact_path(k)/(1+exact_path(k)*timestep);
 
     % Update the variable moving_term_1 (= -A.'*p(exact_path(i + 1)))
-    Atop_times_pk = Atop_times_pk + timestep*moving_term_2;
+    Atop_times_pk = Atop_times_pk + timestep*Atop_times_dk;
 
     % Update the primal solution
     alpha = exact_path(k+1)/exact_path(k);
@@ -103,12 +101,16 @@ while(shall_continue && k <= buffer_path)
         [~,quantity_1,~] = lsqnonneg(K*D,b + exact_path(k)*sol_p(:,k));
         disp(['Diagnostic I: Computing min_{u >= 0} ||K*D*u - (b+tk*pk)||^2: ',num2str(quantity_1)]);
 
-        for h = [0.1,0.5,0.9,1]
-            tmp = (1-h)*exact_path(k)*sol_p(:,k) + h*d;
-            [~,tmp2,~] = lsqnonneg(K*D,b + tmp);
-            disp(num2str(tmp2))
-        end
-        disp(' ')
+        % Compute dual vector between pk and pk+1 at different points
+        % disp(' ')
+        % disp('Diagnostics II: ')
+        % for h = 0.05:0.1:0.95
+        %     tmp_p = sol_p(:,k) + (h*timestep)*d;
+        %     tmp_t = exact_path(k)/(1 + exact_path(k)*(h*timestep));
+        %     [~,tmp2,~] = lsqnonneg(K*D,b + tmp_t*tmp_p);
+        %     disp(num2str(tmp2))
+        % end
+        % disp(' ')
 
         % Display when the solution is strictly positive
         if(any(u <= tol))
