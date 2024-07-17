@@ -38,7 +38,7 @@ while(shall_continue && k <= buffer_path)
     K = A(:,equicorrelation_set);
     
 
-    %%%%% 2. Solve the NNLS problem + store the solution u = D*v
+    %%%%% 2. Solve the NNLS problem + store the solution v = D*u
     u = lsqnonneg(K*D,b);
     v = zeros(n,1); v(equicorrelation_set) = D*u;
 
@@ -115,6 +115,53 @@ while(shall_continue && k <= buffer_path)
         % Display when the solution is strictly positive
         if(any(u <= tol))
             disp('Diagnostic II: At least one component of the NNLS problem is zero.')
+
+            % Compute LSQ solution instead
+            utest = (K*D)\b;
+            vtest = zeros(n,1); vtest(equicorrelation_set) = D*utest;
+            h = (exact_path(k)-exact_path(k+1))/50;
+            tmp_path = exact_path(k):-h:exact_path(k+1);
+
+            tmp_alpha = tmp_path/exact_path(k);
+            tmp_vec = zeros(n,length(tmp_path));
+
+            for i=1:1:length(tmp_path)
+                tmp_vec(:,i) = tmp_alpha(i)*sol_x(:,k) + (1-tmp_alpha(i))*vtest;
+            end
+
+            figure(1)
+            plot(tmp_path,tmp_vec(149,:),'o-')
+            hold
+
+            % Display some information
+            disp('Sol u from NNLS problem')
+            disp(u)
+            disp(norm(d))
+
+            disp('Sol utest from matrix inverse')
+            disp(utest)
+            disp(norm(K*vtest(equicorrelation_set) + bminus))
+
+            % TODO: Figure out what is going on.
+
+
+            % Check for violations of the cone conditions. This is the
+            % important one.
+            tmp_w = -A.'*(sol_p(:,k));
+
+            disp('Signs of the coefficient x from u')
+            disp(v(equicorrelation_set))
+
+            disp('Signs of the coefficient x from utest')
+            disp(vtest(equicorrelation_set))
+
+            disp('Cone sides')
+            disp(tmp_w(equicorrelation_set))
+
+            disp('-----')
+
+            % TODO: Check norm of Au - b
+            break;
         else
             disp('Diagnostic II: All components of the NNLS are strictly positive.')
         end
