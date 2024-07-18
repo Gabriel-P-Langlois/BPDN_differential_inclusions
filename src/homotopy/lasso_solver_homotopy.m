@@ -142,8 +142,6 @@ while(shall_continue && k <= buffer_path)
             disp(utest)
             disp(norm(K*vtest(equicorrelation_set) + bminus))
 
-            % TODO: Figure out what is going on.
-
 
             % Check for violations of the cone conditions. This is the
             % important one.
@@ -160,7 +158,18 @@ while(shall_continue && k <= buffer_path)
 
             disp('-----')
 
-            % TODO: Check norm of Au - b
+
+            % Check
+            tc = 15.495438700656;
+            t1 = 16.221310515155775;
+            true_timestep = (1/tc) - (1/t1);
+
+            prop = true_timestep/timestep;    % 0.405025
+            [~,quantity_2,~] = lsqnonneg(K*D,b + exact_path(k)*sol_p(:,k)/(1+prop*timestep*exact_path(k)) + (K*vtest(equicorrelation_set) + bminus)*exact_path(k)*timestep*prop/(1+timestep*prop*exact_path(k)));
+            disp(['RESIDUAL CHECK: ',num2str(quantity_2)])
+            disp(['PROP USED: ',num2str(prop)])
+            disp('---')
+
             break;
         else
             disp('Diagnostic II: All components of the NNLS are strictly positive.')

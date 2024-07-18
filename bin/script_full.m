@@ -1,33 +1,14 @@
 %%  Description
 %   Written by Gabriel Provencher Langlois.
 
+%% TODO
+% Re-add plots
 
 %%
-% Update Jul 16: The solution computed by the homotopy method 
-% pick different values of x at the time points where the NNLS
-% returns a strictly positive solution.
-
-% NOTE: Interesting, in the example with m=40 and n=50,
-% the FISTA solution picks a zero components that is not picked up
-% by the homotopy method.
-
-% It seems the exact method is not picking up all entries for which -A.*'p
-% is equal to +/- 1.
-
-% CLUE: At iteration 25, the NNLS finds a zero component. So far,
-% so good. It seems that the FISTA solution ``corrects" the anomaly and
-% returns the previous nonzero coefficient to that zero component.
-
-% Index of the 0 component of the NNLS solution at 
-% iteration 25 *is* component 149, as suspected.
-
-% TODO: Could we solve the least squares problem and interpolate only 
-% UNTIL we reach the zero component, and then restart from there? That
-% would be crazy, but maybe that's what we need to do? Ivnestigate!
 
 %% Options for the script
 display_iterations = false;
-run_diagnostics = true;
+run_diagnostics = false;
 use_fista = true;
 use_glmnet = false;
 
@@ -35,11 +16,11 @@ use_glmnet = false;
 if(use_fista)
     display_output_fista = true;
     tol_fista = 1e-10;
-    min_iters_fista = 150;
+    min_iters_fista = 200;
 end
 
 % Tolerance for the homotopy algorithm
-tol_exact = 1e-12;
+tol_exact = 1e-10;
 
 % Random seed
 rng('default')
@@ -81,7 +62,7 @@ disp('The homotopy method (via gradient inclusions) for the Lasso.')
 
 tic
 [sol_exact_x,sol_exact_p,exact_path] = ...
-    lasso_solver_homotopy(A,b,m,n,tol_exact,display_iterations,run_diagnostics);
+    lasso_solver_homotopy_correct(A,b,m,n,tol_exact,display_iterations);
 time_exact_total = toc;
 
 disp(['Total time elasped for the exact Lasso algorithm: ',...
@@ -125,10 +106,10 @@ if(use_fista)
             sol_fista_x(:,i-1),sol_fista_p(:,i-1),A);
 
         % Display percentage of zero coefficients
-        if(display_output_fista)
-            disp(['Iteration ',num2str(i),'/',num2str(length_path-1),': Percentage of coefficients found to be zero: ',...
-                num2str(100-100*sum(ind)/n)])
-        end
+        % if(display_output_fista)
+        %     disp(['Iteration ',num2str(i),'/',num2str(length_path-1),': Percentage of coefficients found to be zero: ',...
+        %         num2str(100-100*sum(ind)/n)])
+        % end
 
         % Call the FISTA solver
         tau = 1/L22;
@@ -165,7 +146,7 @@ end
 %% Run diagnostics if enabled
 
 % Further diagnostics if the FISTA method was used
-if(use_fista && run_diagnostics)
+if(use_fista)
     % Compute the MSE between homotopy sol - FISTA sol -- Primal 
     MSE_primal_homotopy_fista = 0;
     for i=2:1:length(sol_path)-1
@@ -197,72 +178,74 @@ if(use_fista && run_diagnostics)
     disp(' ')
 end
 
-disp('Index 25')
-ind25_exact = abs(sol_exact_x(:,25)) > tol_exact; check25_exact = -A.'*sol_exact_p(:,25);
-ind25_fista = abs(sol_fista_x(:,25)) > tol_fista; check25_fista = -A.'*sol_fista_p(:,25);
-
-disp(sol_exact_x(abs(sol_exact_x(:,25)) > 0,25))
-disp(check25_exact(ind25_exact))
-disp(find(ind25_exact))
-
-disp(sol_fista_x(abs(sol_fista_x(:,25)) > 0,25))
-disp(check25_fista(ind25_fista))
-disp(find(ind25_fista))
-
-% Index 179
-%disp(check25_exact(179))
-
-disp(' ')
-disp('Index 26')
-disp(' ')
-
-ind26_exact = abs(sol_exact_x(:,26)) > tol_exact; check26_exact = -A.'*sol_exact_p(:,26);
-ind26_fista = abs(sol_fista_x(:,26)) > tol_fista; check26_fista = -A.'*sol_fista_p(:,26);
-
-disp(sol_exact_x(abs(sol_exact_x(:,26)) > 0,26))
-disp(check26_exact(ind26_exact))
-disp(find(ind26_exact))
-
-disp(sol_fista_x(abs(sol_fista_x(:,26)) > 0,26))
-disp(check26_fista(ind26_fista))
-disp(find(ind26_fista))
-
-% Index 149
-disp('Index 149')
-disp(sol_exact_x(149,25))
-disp(check25_exact(149))
-disp(sol_exact_x(149,26))
-disp(check26_exact(149))
-
-disp(sol_fista_x(149,25))
-disp(check25_fista(149))
-disp(sol_fista_x(149,26))
-disp(check26_fista(149))
-
-
-
-% Refine the FISTA solution inbetween the difficult points
-t1 = sol_path(25);
-t2 = sol_path(26);
-h = (t1-t2)/50;
-tmp_t = t1:-h:t2;
-tmp_vec_x = zeros(n,length(t1:-h:t2));
-tmp_vec_x(:,1) = sol_fista_x(:,25);
-
-tmp_vec_p = zeros(m,length(t1:-h:t2));
-tmp_vec_p(:,1) = sol_fista_p(:,25);
-
-
-for i=1:1:length(t1:-h:t2)-1
-    [tmp_vec_x(:,i+1),tmp_vec_p(:,i+1),num_iters] = ...
-            lasso_fista_solver(tmp_vec_x(:,i),tmp_vec_p(:,i),...
-            tmp_t(i+1),A,b,tau,max_iters,tol_fista,min_iters_fista);
-end
-
-plot(sol_path,sol_exact_x(149,:))
-plot(sol_path,sol_fista_x(149,:))
-plot(tmp_t,tmp_vec_x(149,:),'-x')
-legend('Test solution','Homotopy path','Lasso solution','Refined Lasso solution')
+% if(run_diagnostics)
+%     disp('Index 25')
+%     ind25_exact = abs(sol_exact_x(:,25)) > tol_exact; check25_exact = -A.'*sol_exact_p(:,25);
+%     ind25_fista = abs(sol_fista_x(:,25)) > tol_fista; check25_fista = -A.'*sol_fista_p(:,25);
+% 
+%     disp(sol_exact_x(abs(sol_exact_x(:,25)) > 0,25))
+%     disp(check25_exact(ind25_exact))
+%     disp(find(ind25_exact))
+% 
+%     disp(sol_fista_x(abs(sol_fista_x(:,25)) > 0,25))
+%     disp(check25_fista(ind25_fista))
+%     disp(find(ind25_fista))
+% 
+%     % Index 179
+%     %disp(check25_exact(179))
+% 
+%     disp(' ')
+%     disp('Index 26')
+%     disp(' ')
+% 
+%     ind26_exact = abs(sol_exact_x(:,26)) > tol_exact; check26_exact = -A.'*sol_exact_p(:,26);
+%     ind26_fista = abs(sol_fista_x(:,26)) > tol_fista; check26_fista = -A.'*sol_fista_p(:,26);
+% 
+%     disp(sol_exact_x(abs(sol_exact_x(:,26)) > 0,26))
+%     disp(check26_exact(ind26_exact))
+%     disp(find(ind26_exact))
+% 
+%     disp(sol_fista_x(abs(sol_fista_x(:,26)) > 0,26))
+%     disp(check26_fista(ind26_fista))
+%     disp(find(ind26_fista))
+% 
+%     % Index 149
+%     disp('Index 149')
+%     disp(sol_exact_x(149,25))
+%     disp(check25_exact(149))
+%     disp(sol_exact_x(149,26))
+%     disp(check26_exact(149))
+% 
+%     disp(sol_fista_x(149,25))
+%     disp(check25_fista(149))
+%     disp(sol_fista_x(149,26))
+%     disp(check26_fista(149))
+% 
+% 
+% 
+%     % Refine the FISTA solution inbetween the difficult points
+%     t1 = sol_path(25);
+%     t2 = sol_path(26);
+%     h = (t1-t2)/1000;
+%     tmp_t = t1:-h:t2;
+%     tmp_vec_x = zeros(n,length(t1:-h:t2));
+%     tmp_vec_x(:,1) = sol_fista_x(:,25);
+% 
+%     tmp_vec_p = zeros(m,length(t1:-h:t2));
+%     tmp_vec_p(:,1) = sol_fista_p(:,25);
+% 
+% 
+%     for i=1:1:length(t1:-h:t2)-1
+%         [tmp_vec_x(:,i+1),tmp_vec_p(:,i+1),num_iters] = ...
+%                 lasso_fista_solver(tmp_vec_x(:,i),tmp_vec_p(:,i),...
+%                 tmp_t(i+1),A,b,tau,max_iters,tol_fista,min_iters_fista);
+%     end
+% 
+%     plot(sol_path,sol_exact_x(149,:))
+%     plot(sol_path,sol_fista_x(149,:))
+%     plot(tmp_t,tmp_vec_x(149,:),'-x')
+%     legend('Test solution','Homotopy path','Lasso solution','Refined Lasso solution')
+% end
 
 
 
