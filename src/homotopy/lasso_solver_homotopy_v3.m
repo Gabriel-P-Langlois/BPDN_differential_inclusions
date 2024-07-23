@@ -2,7 +2,7 @@
 % Exact homotopy algorithm -- Written by Gabriel Provencher Langlois
 
 function [sol_x,sol_p,exact_path] = ...
-    lasso_solver_homotopy_correct(A,b,m,n,tol,display_iterations)
+    lasso_solver_homotopy_v3(A,b,m,n,tol,display_iterations)
 
 
 %% Initialization
@@ -39,18 +39,13 @@ while(shall_continue && k <= buffer_path)
     
 
     %%%%% 2. Solve the NNLS problem + store the solution v = D*u
-    u = lsqnonneg(K*D,b);
-    if(k == 25)
-        disp(u)
-    end
-    if(any(u < tol))
-        u = (K*D)\b;
-    end
-    v = zeros(n,1); v(equicorrelation_set) = D*u;
+    u = lsqnonneg(K*D,-exact_path(k)*sol_p(:,k));
+
+    %v = zeros(n,1); v(equicorrelation_set) = D*u;
 
 
     %%%%% 3. Compute the descent direction
-    d = (K*v(equicorrelation_set) + bminus);
+    d = (K*(D*u) + exact_path(k)*sol_p(:,k));
 
     % Compute the variable moving_term_2 (= A.'*d)
     Atop_times_dk = (d.'*A).'; 
@@ -76,15 +71,15 @@ while(shall_continue && k <= buffer_path)
         timestep = min(vec);
 
         % Second calculation
-        tmp_timestep2 = -sol_x(equicorrelation_set,k)./(exact_path(k).*v(equicorrelation_set));
-        timestep2 = min(tmp_timestep2(find(tmp_timestep2 > 0)));
-
-        if(~isempty(timestep2))
-            timestep = min(timestep,timestep2);
-        end
+        % tmp_timestep2 = -sol_x(equicorrelation_set,k)./(exact_path(k).*v(equicorrelation_set));
+        % timestep2 = min(tmp_timestep2(find(tmp_timestep2 > 0)));
+        % 
+        % if(~isempty(timestep2))
+        %     timestep = min(timestep,timestep2);
+        % end
 
     else
-        sol_x(:,k+1) = v; 
+        %sol_x(:,k+1) = v; 
         break;
     end
 
@@ -99,7 +94,7 @@ while(shall_continue && k <= buffer_path)
 
     % Update the primal solution
     alpha = exact_path(k+1)/exact_path(k);
-    sol_x(:,k+1) = alpha*sol_x(:,k) + (1-alpha)*v; 
+    %sol_x(:,k+1) = alpha*sol_x(:,k) + (1-alpha)*v; 
 
     %%%%% 6. Optionals
     % If enabled, display current iteration

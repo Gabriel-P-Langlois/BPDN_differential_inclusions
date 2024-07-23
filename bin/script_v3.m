@@ -2,7 +2,7 @@
 %   Written by Gabriel Provencher Langlois.
 
 %% TODO
-% Re-add plots
+% This version: with the modified timestep.
 
 %%
 
@@ -62,7 +62,7 @@ disp('The homotopy method (via gradient inclusions) for the Lasso.')
 
 tic
 [sol_exact_x,sol_exact_p,exact_path] = ...
-    lasso_solver_homotopy_correct(A,b,m,n,tol_exact,display_iterations);
+    lasso_solver_homotopy_v3(A,b,m,n,tol_exact,display_iterations);
 time_exact_total = toc;
 
 disp(['Total time elasped for the exact Lasso algorithm: ',...
