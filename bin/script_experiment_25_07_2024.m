@@ -7,7 +7,19 @@
 % DkAtopk x dk > 0. This causes issues with the equicorrelation set
 % for the future direction, but I think it can be mitigated.
 
+%% Notes (25/07/2024)
+% I've made some progress by using the least squares solver
+% and incorporating the second time step, the one that we use to drop
+% the index from the equicorrelation set
 
+% There is still a bug, though, at iterate 41. But I am getting closer.
+
+% The issue is that I found a case where uhat < 0 and utilde = 0.
+% I suppose it means we just drop out the index? Is that what we should do?
+
+%% (26/07/2024)
+% Almost there...
+% There is a bug with the indexing sol(52) vs sol(53) that I need to squash
 
 %% Options for the script
 display_iterations = false;
@@ -73,6 +85,11 @@ disp(['Total time elasped for the exact Lasso algorithm: ',...
     num2str(time_exact_total), ' seconds.'])
 disp('----------')
 disp(' ')
+
+disp('FLAG2')
+disp(sol_exact_x(:,52))
+disp('FLAG3')
+disp(sol_exact_x(:,53))
 
 % Remove superfluous components of the path at the end
 length_path = length(find(exact_path));
