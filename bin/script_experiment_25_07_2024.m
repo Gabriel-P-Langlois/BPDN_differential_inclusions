@@ -17,9 +17,11 @@
 % The issue is that I found a case where uhat < 0 and utilde = 0.
 % I suppose it means we just drop out the index? Is that what we should do?
 
+
 %% (26/07/2024)
 % Almost there...
 % There is a bug with the indexing sol(52) vs sol(53) that I need to squash
+
 
 %% Options for the script
 display_iterations = false;
@@ -72,35 +74,43 @@ b = (A*xsol + sqrt(sigma)*randn(m,1));
 
 
 %% Homotopy algorithm
+tic
 disp(' ')
 disp('----------')
 disp('The homotopy method (via gradient inclusions) for the Lasso.')
 
-tic
-[sol_exact_x,sol_exact_p,exact_path] = ...
+[sol_exact_x,sol_exact_p,sol_path] = ...
     homotopy_exp_25_07_2024(A,b,m,n,tol_exact,display_iterations,run_diagnostics);
+
+length_path = length(sol_path);
 time_exact_total = toc;
 
+% Display a few details
 disp(['Total time elasped for the exact Lasso algorithm: ',...
     num2str(time_exact_total), ' seconds.'])
 disp('----------')
 disp(' ')
-
-disp('FLAG2')
-disp(sol_exact_x(:,52))
-disp('FLAG3')
-disp(sol_exact_x(:,53))
-
-% Remove superfluous components of the path at the end
-length_path = length(find(exact_path));
-sol_path = exact_path(1:length_path); 
-sol_exact_x(:,length_path+1:end) = [];
-sol_exact_p(:,length_path+1:end) = [];
-
-% Display a few details
 disp(['Length of the path: ',num2str(length(sol_path))])
 disp(length(sol_exact_x(1,:)))
 
+disp(['Basis Pursuit solution: ||Ax_bp-b||_2 = ',num2str(norm(A*sol_exact_x(:,end)-b))])
+
+
+%% Basis Pursuit algorithm
+tic
+disp(' ')
+disp('----------')
+disp('Basis Pursuit algorithm')
+
+tic
+% TODO: Add vanilla basis pursuit algorithm
+time_bp = toc;
+disp(['Total time elasped for the exact Lasso algorithm: ',...
+    num2str(time_exact_total), ' seconds.'])
+disp('----------')
+disp(' ')
+% TODO: Compute basis pursuit solution
+% TODO: Compute difference in the solutions
 
 %% FISTA algorithm
 % Solve min_{x} 0.5*normsq{Ax-b} + t*normone(x)
@@ -111,8 +121,8 @@ if(use_fista)
 
     % Define initial quantities and placeholders for solutions
     max_iters = 500000;
-    sol_fista_x = zeros(n,length_path);     % Primal solutions
-    sol_fista_p = zeros(m,length_path);     % Dual solutions 
+    sol_fista_x = zeros(n,length_path-1);     % Primal solutions
+    sol_fista_p = zeros(m,length_path-1);     % Dual solutions 
     sol_fista_p(:,1) = -b;
 
     % Timings
@@ -161,9 +171,6 @@ if(use_fista)
 end
 
 
-%% RUN GLMNET
-
-
 %% Run diagnostics if enabled
 
 % Further diagnostics if the FISTA method was used
@@ -173,7 +180,7 @@ if(use_fista && run_diagnostics)
     for i=2:1:length(sol_path)-1
         var = norm(sol_exact_x(:,i)-sol_fista_x(:,i))^2;
         MSE_primal_homotopy_fista = MSE_primal_homotopy_fista + var;
-        disp(['Iteration: ',num2str(i),': (Norm of homotopy sol - FISTA sol)/norm(FISTA sol) (primal): ',...
+        disp(['Iteration: ',num2str(i-1),': (Norm of homotopy sol - FISTA sol)/norm(FISTA sol) (primal): ',...
             num2str(sqrt(var)/norm(sol_fista_x(:,i)))])
     end
     MSE_primal_homotopy_fista = MSE_primal_homotopy_fista/...
@@ -189,7 +196,7 @@ if(use_fista && run_diagnostics)
     for i=2:1:length(sol_path)-1
         var = norm(sol_exact_p(:,i)-sol_fista_p(:,i))^2;
         MSE_dual_homotopy_fista = MSE_dual_homotopy_fista + var;
-        disp(['Iteration: ',num2str(i),': (Norm of homotopy sol - FISTA sol)/norm(FISTA sol) (dual): ',...
+        disp(['Iteration: ',num2str(i-1),': (Norm of homotopy sol - FISTA sol)/norm(FISTA sol) (dual): ',...
             num2str(sqrt(var)/norm(sol_fista_p(:,i)))])
     end
     MSE_dual_homotopy_fista = MSE_dual_homotopy_fista/(length(sol_path)-1);
@@ -198,73 +205,3 @@ if(use_fista && run_diagnostics)
         num2str(MSE_dual_homotopy_fista)])
     disp(' ')
 end
-
-% disp('Index 25')
-% ind25_exact = abs(sol_exact_x(:,25)) > tol_exact; check25_exact = -A.'*sol_exact_p(:,25);
-% ind25_fista = abs(sol_fista_x(:,25)) > tol_fista; check25_fista = -A.'*sol_fista_p(:,25);
-% 
-% disp(sol_exact_x(abs(sol_exact_x(:,25)) > 0,25))
-% disp(check25_exact(ind25_exact))
-% disp(find(ind25_exact))
-% 
-% disp(sol_fista_x(abs(sol_fista_x(:,25)) > 0,25))
-% disp(check25_fista(ind25_fista))
-% disp(find(ind25_fista))
-% 
-% % Index 179
-% %disp(check25_exact(179))
-% 
-% disp(' ')
-% disp('Index 26')
-% disp(' ')
-% 
-% ind26_exact = abs(sol_exact_x(:,26)) > tol_exact; check26_exact = -A.'*sol_exact_p(:,26);
-% ind26_fista = abs(sol_fista_x(:,26)) > tol_fista; check26_fista = -A.'*sol_fista_p(:,26);
-% 
-% disp(sol_exact_x(abs(sol_exact_x(:,26)) > 0,26))
-% disp(check26_exact(ind26_exact))
-% disp(find(ind26_exact))
-% 
-% disp(sol_fista_x(abs(sol_fista_x(:,26)) > 0,26))
-% disp(check26_fista(ind26_fista))
-% disp(find(ind26_fista))
-% 
-% % Index 149
-% disp('Index 149')
-% disp(sol_exact_x(149,25))
-% disp(check25_exact(149))
-% disp(sol_exact_x(149,26))
-% disp(check26_exact(149))
-% 
-% disp(sol_fista_x(149,25))
-% disp(check25_fista(149))
-% disp(sol_fista_x(149,26))
-% disp(check26_fista(149))
-% 
-% 
-% 
-% % Refine the FISTA solution inbetween the difficult points
-% t1 = sol_path(25);
-% t2 = sol_path(26);
-% h = (t1-t2)/1000;
-% tmp_t = t1:-h:t2;
-% tmp_vec_x = zeros(n,length(t1:-h:t2));
-% tmp_vec_x(:,1) = sol_fista_x(:,25);
-% 
-% tmp_vec_p = zeros(m,length(t1:-h:t2));
-% tmp_vec_p(:,1) = sol_fista_p(:,25);
-% 
-% 
-% for i=1:1:length(t1:-h:t2)-1
-%     [tmp_vec_x(:,i+1),tmp_vec_p(:,i+1),num_iters] = ...
-%             lasso_fista_solver(tmp_vec_x(:,i),tmp_vec_p(:,i),...
-%             tmp_t(i+1),A,b,tau,max_iters,tol_fista,min_iters_fista);
-% end
-% 
-% plot(sol_path,sol_exact_x(149,:))
-% plot(sol_path,sol_fista_x(149,:))
-% plot(tmp_t,tmp_vec_x(149,:),'-x')
-% legend('Test solution','Homotopy path','Lasso solution','Refined Lasso solution')
-
-
-
