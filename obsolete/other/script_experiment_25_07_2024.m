@@ -55,7 +55,9 @@ rng('default')
 % Values are all set to 1
 
 
+%m = 40; n = 200;        % Number of samples and features
 m = 40; n = 200;        % Number of samples and features
+
 k_num = floor(n/50);     % Number of true nonzero coefficients
 val = 1;                % Value of nonzero coefficients
 SNR = 1;                % Signal to noise ratio
