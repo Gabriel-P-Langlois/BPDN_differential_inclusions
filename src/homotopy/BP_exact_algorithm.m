@@ -43,7 +43,7 @@ equi_set = (abs(Atop_times_pk) >= tol_minus);
 
 %% Algorithm
 k = 1;
-max_iter = 50*m;
+max_iter = 3000*m;
 while(true && k < max_iter)
     %%%%% 1. Compute the relevant vectors and matrices
     K = A(:,equi_set);
@@ -110,6 +110,6 @@ end
 % Display warning if max_iter has been reached
 % Note: May possibly be reached for some contorted matrix A.
 if(k == max_iter)
-    disp('Warning: k = 100*m iterations reached!')
+    disp('Warning: Maximum number of iterations reached!')
 end
 end

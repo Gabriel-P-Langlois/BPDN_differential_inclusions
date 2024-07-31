@@ -1,5 +1,5 @@
 function [sol_x,sol_p,sol_t] = ...
-    BPDN_exact_algorithm(A,b,tol,disp_output_exact,run_opt_cond_checks)
+    BPDN_exact_algorithm(A,b,tol,max_iter,disp_output_exact,run_opt_cond_checks)
 %% Description -- lasso_homotopy_solver_opt
 % Exact BPDN solution using gradient inclusions -- Written by Gabriel Provencher Langlois
 
@@ -15,7 +15,6 @@ t0 = norm(Atop_times_bminus,inf);
 
 % Initialize ``maximum" number of iterations permitted before stopping
 % NOTE: Generally will stop around 1.5 to 2.5*m
-max_iter = 20*m;
 
 % Initialize the main quantities
 sol_x = zeros(n,max_iter);
@@ -26,6 +25,11 @@ sol_t = zeros(1,max_iter); sol_t(1) = t0;
 Atop_times_pk = Atop_times_bminus/t0;   % Used to speed up the computations
 equi_set = (abs(Atop_times_pk) >= tol_minus); 
 
+% Optional quantities when run_opt_cond_checks = true
+if(run_opt_cond_checks)
+    count_opt_cond_satisfied = 0;
+end
+
 
 %% Algorithm
 % Run the algorithm until either convergence is achieved or the maximum
@@ -35,12 +39,12 @@ k = 1;
 while(shall_continue && k <= max_iter)
     %%%%% 1. Compute the relevant vectors and matrices
     K = A(:,equi_set);
-    vector_of_signs = sign(-Atop_times_pk);
-    D = vector_of_signs(equi_set);
+    all_signs = sign(-Atop_times_pk);
+    Dvec = all_signs(equi_set);
 
     %%%%% 2. Solve the LSQ problem
     while(true)
-        u = (K.*vector_of_signs(equi_set).')\b;
+        u = (K.*Dvec.')\b;
 
         % Retrieve components of the LSQ solution that are negative, and
         % retrieve the corresponding indices in the equicorrelation set.
@@ -51,12 +55,12 @@ while(shall_continue && k <= max_iter)
         my_ind = ind_equi_set(ind_u_neg);
 
         % Retrieve corresponding utilde
-        utilde = vector_of_signs(my_ind).*sol_x(my_ind,k);
+        utilde = all_signs(my_ind).*sol_x(my_ind,k);
 
         % Remove indices violating the other condition
         if(any(abs(utilde) < tol))
             equi_set(my_ind(find(abs(utilde) < tol))) = 0;
-            D = vector_of_signs(equi_set);
+            Dvec = all_signs(equi_set);
             K = A(:,equi_set);
         else
             break
@@ -64,8 +68,8 @@ while(shall_continue && k <= max_iter)
     end
 
     %%%%% 3. Compute the descent direction
-    v = zeros(n,1); v(equi_set) = D.*u;
-    d = K*(D.*u) + bminus;
+    v = zeros(n,1); v(equi_set) = Dvec.*u;
+    d = K*(Dvec.*u) + bminus;
 
     % Compute A.'*d and the set of indices abs(A.'*d) > 0
     Atop_times_dk = (d.'*A).'; 
@@ -88,9 +92,9 @@ while(shall_continue && k <= max_iter)
     % the set of admissible faces. If the set of indices abs(A.'*d) > 0
     % is empty, then timestep = +\infty
     if (any(active_set_plus))
-        term1 = vector_of_signs.*Atop_times_dk;
+        term1 = all_signs.*Atop_times_dk;
         sign_coeffs = sign(term1);
-        term2 = -vector_of_signs.*Atop_times_pk;
+        term2 = -all_signs.*Atop_times_pk;
 
         vec = (1+sign_coeffs(active_set_plus).*term2(active_set_plus))./...
             abs(term1(active_set_plus));
@@ -140,31 +144,38 @@ while(shall_continue && k <= max_iter)
     end
 
     % If enabled, display some diagnostics
-    % WARNING: Enabling this will considerable slow down the algorithm
+    % WARNING: Enabling this may considerably slow down the algorithm
     if(run_opt_cond_checks)
-        disp(' ')
         % Compute the residual norm of the NNLS problem
         % min_{u >= 0} ||K*D*u - (b+tk*pk)||^2
-        [~,quantity_1,~] = lsqnonneg(K*D,b + sol_t(k)*sol_p(:,k));
-        disp(['Diagnostic I: Computing min_{u >= 0} ||K*D*u - (b+tk*pk)||^2: ',num2str(quantity_1)]);
+        [~,quantity_1,~] = lsqnonneg(K.*Dvec.',b + sol_t(k)*sol_p(:,k));
 
-        % Display when the solution is strictly positive
-        if(any(u < -tol))
-            disp('Diagnostic II: At least one component of the NNLS problem is zero.')
-        else
-            disp('Diagnostic II: All components of the NNLS are strictly positive.')
+        if(disp_output_exact)
+            disp(['Diagnostic I: Computing min_{u >= 0} ||K*D*u - (b+tk*pk)||^2: ',num2str(quantity_1)]);
         end
-        disp(' ')
-        disp(' ')
+
+        if(quantity_1 < tol)
+            count_opt_cond_satisfied = count_opt_cond_satisfied + 1;
+        end
+    end
+
+    % Add a space if anything was printed
+    if(disp_output_exact)
+        disp(' ') 
     end
 
     %%%%% 7. Increment
     k=k+1;
 end
+% If enable, count the number of times the residual in run_opt_cond_checks
+% is satisfied.
+if(run_opt_cond_checks)
+    disp(['Number of times the residual norm ||K*D*u - (b+tk*pk)||^2 is < tol: ',num2str(count_opt_cond_satisfied),' out of k ',num2str(k-1),' iterations.'])
+end
 
 % Display warning if max_iter has been reached
 % Note: May possibly be reached for some contorted matrix A.
-if(k == max_iter)
-    disp('Warning: k = 100*m iterations reached!')
+if(k >= max_iter)
+    disp('Warning: Maximum number of iterations reached!')
 end
 end

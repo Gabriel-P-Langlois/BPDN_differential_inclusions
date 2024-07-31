@@ -67,8 +67,9 @@ disp('----------')
 disp('Algorithm: Exact solution to BPDN via gradient inclusions')
 
 % Call the solver
+max_iter = 10*m;
 [sol_x_exact,sol_p_exact,sol_path] = ...
-    BPDN_exact_algorithm(A,b,tol_exact,disp_output_exact,run_opt_cond_checks);
+    BPDN_exact_algorithm(A,b,tol_exact,max_iter,disp_output_exact,run_opt_cond_checks);
 time_total_exact = toc;
 
 % Calculate the length of the path

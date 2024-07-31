@@ -8,9 +8,9 @@
 m = 100; n = 500;
 
 % Options for the exact BPDN algorithm
-tol_exact = 1e-08;
+tol_exact = 1e-10;
 disp_output_exact = true;
-run_opt_cond_checks = false;
+run_opt_cond_checks = true;
 
 % Options for the exact BP algorithm
 use_bp = true;
