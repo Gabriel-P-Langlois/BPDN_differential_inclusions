@@ -20,6 +20,7 @@ function [sol_x,sol_p] = BP_exact_algorithm(A,b,tol,disp_output_bp)
 % Output:
 % - sol_x: An n x 1 solution to the Basis Pursuit problem
 % - sol_p: An m x 1 solution to the dual of the Basis Pursuit problem
+
 % Written by Gabriel Provencher Langlois
 
 
