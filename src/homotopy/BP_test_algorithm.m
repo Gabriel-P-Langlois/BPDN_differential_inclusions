@@ -54,11 +54,7 @@ for i=1:1:100
         sol_x(:,i+1) = sol_x(:,i) + D.*v;
         xtot = xtot + sol_t(i)*(D.*w);
         btot = btot - sol_t(i)*q;
-
-        if(disp_output_bp)
-            disp(norm(A*sol_x(:,i+1) - btot))
-            disp('Done -- Absolute cinema!')
-        end
+        disp(["Done after ", num2str(i)," iterations!"])
         break;
     end
 

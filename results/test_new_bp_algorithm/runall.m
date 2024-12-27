@@ -12,15 +12,21 @@
 
 % The question is: Do we have x+v = u? Or at least normone(x+v) = norm(u)
 
+% ANSWER: Nope. At least, not in the way that it is done. This problem
+% strikes again!
+
+% However, what if m=n? Then uniqueness should work for us, right?
+% This might mean Mairal's algorithm can be beaten?
+
 
 %% Example 1 -- Random Gaussian design -- Setup
 % Options
 rng('default')
-tol_bp = 1e-10;
+tol_bp = 1e-8;
 disp_output_bp = false;
 
 % Parameters
-m = 100; n = 300;
+m = 100; n = 100;
 k_num = floor(n/50);    % Number of true nonzero coefficients
 val = 1;                % Value of nonzero coefficients
 SNR = 1;                % Signal to noise ratio
@@ -43,7 +49,7 @@ disp('Basis Pursuit algorithm (Ciril et al. (2023)')
 
 % Call the BP solver
 tic
-[sol_x, ~] = BP_exact_algorithm(A,b,tol_bp,disp_output_bp);
+[sol_x, ~] = BP_exact_algorithm(A,b,tol_bp,true);
 time_bp = toc;
 
 % Display some information
@@ -57,6 +63,7 @@ disp(['Euclidan norm of Ax-b: ', num2str(norm(A*sol_x-b))])
 disp(['l1 Norm of the bp solution: ', num2str(norm(sol_x,1))])
 disp('----------')
 disp(' ')
+
 
 
 %% Algorithm 2 -- Modified BPDN
@@ -81,5 +88,13 @@ tmp = sol_x_2(:,end) + xtot;
 disp(['Euclidan norm of A(x+xtot)-b: ', num2str(norm(A*tmp - b))])
 disp(['l1 Norm of x + xtot: ', num2str(norm(tmp,1))])
 disp(['residual of sol_x - (sol_x_2 + xtot): ', num2str(norm(tmp - sol_x))])
-% disp('----------')
-% disp(' ')
+disp('----------')
+disp(' ')
+
+if(m==n)
+    tic
+    xlq = A \ b;
+    time_lq = toc;
+    disp(['Total time elasped using LSQ when m=n: ',...
+    num2str(time_lq), ' seconds.'])
+end
