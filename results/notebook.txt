@@ -1,9 +1,0 @@
-%% NOTEBOOK %%
-- The results in each folder can be reproduced by using the runall.m script
-From the project directory, run the runall.m file.
-
-E.g.:
-run ./results/gaussian_m=100_m=500/runall.m
-
-- The runall.m script should be pretty straightforward. For example,
-  to turn off he FISTA algorithm, just set use_fista to false.

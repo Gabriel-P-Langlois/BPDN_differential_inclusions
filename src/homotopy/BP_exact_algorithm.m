@@ -1,27 +1,35 @@
-function [sol_x,sol_p] = BP_exact_algorithm(A,b,tol,disp_output_bp)
+function [sol_x,sol_p] = BP_exact_algorithm(A,b,p0,tol,disp_output_bp)
 %% Description -- bp_algorithm
 % This function computes a solution to the Basis Pursuit problem
 %   min_{x \in \Rn} \norm{x}_{1}   s.t. Ax = b
 % using the methodology described in
-%
+
 % Tendero, Yohann, Igor Ciril, Jérôme Darbon, and Susana Serna. 
 % "An Algorithm Solving Compressive Sensing Problem 
 % Based on Maximal Monotone Operators." 
 % SIAM Journal on Scientific Computing 43, no. 6 (2021): A4067-A4094.
-%
+
+
 % Input:
 % - A: An m x n matrix where m <= n.
 % - b: An m x 1 vector b where b \in \span{A}.
 % - tol: A positive scalar that is used for the error tolerance.
 %        E.g., tol = 1e-10.
+% - p0: An m x 1 vector that serves as the initial value for the algorithm
 % - disp_output_bp: A boolean variable (true/false). Setting this to true
 %                    will print some additional information.
-%
+
+
 % Output:
 % - sol_x: An n x 1 solution to the Basis Pursuit problem
 % - sol_p: An m x 1 solution to the dual of the Basis Pursuit problem
 
 % Written by Gabriel Provencher Langlois
+
+% Note: If m = n and I give you a vector p so that |-A.'*p| = 1, it does
+% not guarantee that the nonneglsq will be solved in one iteration.
+% it wont necessarily because the signs might be wrong... we still need to
+% change p so that the signs are eventually okay...
 
 
 %% Initialization
@@ -30,16 +38,24 @@ tol_minus = 1-tol;
 % Initialize the auxiliary quantities
 [m,n] = size(A);
 bminus = -b;
-Atop_times_bminus = (bminus.'*A).';
-t = norm(Atop_times_bminus,inf);
+
 
 % Initialize the main quantities
 sol_x = zeros(n,1);
-sol_p = bminus/t;
-Atop_times_pk = Atop_times_bminus/t; % Used to speed up the computations
+sol_p = p0;
+Atop_times_pk = A.'*sol_p;
 
 % Compute initial equicorrelation set
 equi_set = (abs(Atop_times_pk) >= tol_minus); 
+
+% Testing with warm start and m = n...
+if(m==n && sum(equi_set) == m)
+    tmp = A \ b;
+    disp(norm(A*tmp - b))
+
+    tmp2 = (A*diag(sign(-Atop_times_pk))) \ b;
+    disp(norm(A*diag(sign(-Atop_times_pk))*tmp2 - b))
+end
 
 
 %% Algorithm
@@ -86,11 +102,7 @@ while(true && k < max_iter)
 
 
     %%%%% 5. Update all solutions and variables
-    alpha = 1/(1+t*timestep);
-    sol_x = alpha*sol_x + (1-alpha)*v; 
     sol_p = sol_p + timestep*d;
-    t = alpha*t;
-
 
     % Compute next equicorrelation set
     Atop_times_pk = Atop_times_pk + timestep*Atop_times_dk;
@@ -101,7 +113,7 @@ while(true && k < max_iter)
     % If enabled, display the current iteration and the timestep
     % used in the calculation.
     if(disp_output_bp)
-        disp(['Iteration: ', num2str(k),' has timestep = ',num2str(timestep)])
+        disp(['Iteration: ', num2str(k),' has timestep = ',num2str(timestep), ' with norm(D*Ktop*d) = ',num2str(norm(D*(K.'*d)))])
     end
 
     %%%%% 7. Increment

@@ -1,18 +1,41 @@
-%% Description
-% FISTA for solving the classic lasso problem
+function [xplus,pplus,num_iters] = lasso_fista_solver(x,p,t,A,b,...
+    tau,max_iters,tol,min_iters)
+% lasso_fista_solver    Computes the primal and dual solution of the
+%                       LASSO problem
+%                       min_{x \in \Rn} \frac{1}{2}\normsq{Ax-b} + t||x||_1
+%                       within a certain tolerance level using the
+%                       accelerated FISTA algorithm.
 %
-% Note: Convergence criterion require an extra matrix multiplication...
-%       This likely can also be optimized away...
+%   Input
+%       x           -   n dimensional col vector. This is used as a warm
+%                       start for the fista algorithm, typically using a
+%                       primal solution at a different parameter t.
 %
-% min_{x} 0.5*normsq(Ax-b) + t*normone(x)
+%       p           -   m dimensional col vector. This is used as a warm
+%                       start for the fista algorithm, typically using a
+%                       dual solution at a different parameter t.
 %
+%       t           -   positive hyperparameter of the LASSO problem.
+%       A           -   m by n design matrix of the LASSO problem.
+%       b           -   m dimensional col data vector of the LASSO problem.
+%       tau         -   positive number used for the acceleration.
+%       max_iters   -   positive number
+%       tol         -   small positive number (e.g., 1e-08)
+%       min_iters   -   positive number
+%
+%   Output
+%       xplus       -   Primal solution to the LASSO problem at 
+%                       parameter t with data A and b.
+%       pplus       -   Dual solution to the LASSO problem at
+%                       parameter t with data A and b.
+%       num_iters   -   Number of iterations taken to calculate the
+%                       primal and dual solutions.
 
-function [xplus,pplus,num_iters] = lasso_fista_solver(x,p,lambda,A,b,...
-    tau,max_iters,tol,min_iters_fista)
 
+%% Algorithm
 % Auxiliary variables
 xminus = x; pminus = p;
-tminus = 0; beta = 0;
+rminus = 0; beta = 0;
 
 % Counter for the iterations
 num_iters = 0;
@@ -27,20 +50,22 @@ for k=1:1:max_iters
     tmp1 = tmp1 - ((tau*tmp2).'*A).';
     
     % Proximal calculation
-    xplus = l1_prox_operator(tmp1,tau*lambda);
+    xplus = l1_prox_operator(tmp1,tau*t);
     pplus = A*xplus-b;
     
     % Check for convergence
-    if(num_iters >= min_iters_fista && lasso_conv_criterion(num_iters,max_iters,...
-                lambda,(-pplus.'*A).',tol))
-        break;
+    if(num_iters >= min_iters)
+        stop = norm((-pplus.'*A).',inf) <= t*(1 + tol);
+        if(stop || (num_iters >= max_iters))
+            break;
+        end
     end
     
     % Increment
-    t = 0.5*(1 + sqrt(1 + 4*(tminus^2)));
-    beta = (tminus - 1)/t;
+    r = 0.5*(1 + sqrt(1 + 4*(rminus^2)));
+    beta = (rminus - 1)/r;
     xminus = x; x = xplus;
     pminus = p; p = pplus;
-    tminus = t;
+    rminus = r;
 end
 end

@@ -48,7 +48,7 @@ disp('Modified BP algorithm (BPDN + changes in data)')
 
 % Call the BP solver
 tic
-[sol_x, sol_bp, sol_t, xtot, btot] = BP_test_algorithm(A,b,tol_bp,disp_output_bp);
+[sol_x, sol_bp, sol_t, xtot, btot] = BP_silly_algorithm(A,b,tol_bp,disp_output_bp);
 time_bp = toc;
 
 % Display some information

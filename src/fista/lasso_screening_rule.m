@@ -1,26 +1,25 @@
-%% Description
-% Screening rule for Lasso problem
+function ind = lasso_screening_rule(t_next,t,p,A)
+% lasso_screening_rule      Computes a set of indices {1,\dots,n} over 
+%                           which the solution is guaranteed to land on.
+%                           This uses an improved version of the LASSO
+%                           screening rule from Eq. 7 of the paper "Strong 
+%                           rules for  discarding predictors in lasso-type 
+%                           problems" by Tibshirani et al. (2012).
 %
-%   (0.5/t)*normsq(A*x-b) + normone(x)
-%
-% This is a slightly improved version of the rule in Tibshirani, and it's
-% guaranteed to be correct.
-%
-% TBC.
-%
-% Eventually should adapt it to the problem
-%
-%   (0.5/t)*normsq(A*x-b) + sum_{j=1}^{n} c_{j}abs(x_j) + d_{j}x_{j}
-%
-function ind = lasso_screening_rule(lambda_plus,lambda,x,p,A)
-    
-    % Take a convex combination of the previous solution with the empirical
-    % distribution, using the current and previous hyperparameters.
-    beta = lambda_plus/lambda;
+%   Input
+%       t_next  -   positive hyperparameter of the next LASSO solution.
+%       t       -   positive hyperparameter of the previous LASSO solution.
+%       p       -   m dimensional col vector. Previous dual solution at
+%                   parameter t.
+%       A       -   m by n design matrix of the LASSO problem.
 
-    % Compute the lhs and rhs of the criterion and compare them.
-    lhs = abs((p.'*A).');   
-    rhs = beta*(lambda_plus-(vecnorm(A,2).'*norm(p)*(lambda-lambda_plus)/(lambda)));
+% Take a convex combination of the previous solution with the empirical
+% distribution, using the current and previous hyperparameters.
+beta = t_next/t;
+
+% Compute the lhs and rhs of the criterion and compare them.
+lhs = abs((p.'*A).');   
+rhs = beta*(t_next-(vecnorm(A,2).'*norm(p)*(1-beta)));
     
-    ind = lhs >= rhs;
+ind = lhs >= rhs;
 end

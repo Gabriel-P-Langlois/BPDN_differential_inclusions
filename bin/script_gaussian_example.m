@@ -2,15 +2,16 @@ function script_gaussian_example(m,n,tol_exact,disp_output_exact,...
     run_opt_cond_checks,use_bp,tol_bp,disp_output_bp,...
     use_fista,tol_fista,disp_output_fista,min_iters_fista,...
     use_glmnet,tol_glmnet,run_diagnostics)
+
 %%  Script for the work on the BPDN solution via Differential Inclusions
 %   This script is part of the BPDN project. It performs
 %   several numerical experiments to validate a new approach
 %   to Basis Pursuit Denoising.
-%
+
 %   This script is called from an appropriate runall.m function.
-%
+
 %   Written by Gabriel Provencher Langlois.
-%
+
 % Input (TBC.):
 % m:
 % n:
@@ -31,14 +32,15 @@ function script_gaussian_example(m,n,tol_exact,disp_output_exact,...
 
 
 %% Example
-% Synthetic data with noise
+% Synthetic data with Gaussian noise
 % Taken from ``Sparse Regression: Scalable Algorithms and Empirical
 % Performance" by Dimitris Bertsimas, Jean Pauphilet and Bart Van Parys
-%
+
 % Matrix are columns from N(0,I)
 % k_num = Number of nonzero coefficients
 % SNR = 1 (medium noise)
 % Values are all set to 1
+
 
 % Random seed
 rng('default')
@@ -57,7 +59,6 @@ xsol = zeros(n,1); xsol(randsample(n,k_num)) = val;
 % Generate the noisy observation
 sigma = norm(A*xsol)/sqrt(SNR);
 b = (A*xsol + sqrt(sigma)*randn(m,1));
-
 
 
 %% Homotopy algorithm
@@ -85,7 +86,6 @@ disp(['Basis Pursuit solution (residual -- Exact solution to BPDN via gradient i
 disp(['Basis Pursuit solution (obj function -- Exact solution to BPDN via gradient inclusions): ||sol_x_exact(:,end)||_{1} = ',num2str(norm(sol_x_exact(:,end),1))])
 
 
-
 %% Basis Pursuit algorithm
 % This solves the problem
 %   min_{x \in \Rn} \norm{x}_{1}   s.t. Ax = b
@@ -97,7 +97,7 @@ if(use_bp)
     
     % Call the BP solver
     tic
-    [sol_x_bp, sol_p_bp] = BP_exact_algorithm(A,b,tol_bp,disp_output_bp);
+    [sol_x_bp, ~] = BP_exact_algorithm(A,b,-b/norm(A.'*b,inf),tol_bp,disp_output_bp);
     time_bp = toc;
 
     % Display some information
@@ -106,7 +106,6 @@ if(use_bp)
     disp('----------')
     disp(' ')
 end
-
 
 
 %% FISTA algorithm

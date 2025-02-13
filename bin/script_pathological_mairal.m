@@ -1,5 +1,6 @@
 function [sol_x_exact] = script_pathological_mairal(A,b,tol_exact,disp_output_exact,...
     run_opt_cond_checks,use_bp,tol_bp,disp_output_bp,run_diagnostics)
+
 %%  Script for the work on the BPDN solution via Differential Inclusions
 %   This script is part of the BPDN project. It performs
 %   several numerical experiments to validate a new approach
@@ -52,9 +53,9 @@ disp('----------')
 disp('Algorithm: Exact solution to BPDN via gradient inclusions')
 
 % Call the solver
-[m,n] = size(A);
+[m,~] = size(A);
 max_iter = 30000*m;
-[sol_x_exact,sol_p_exact,sol_path] = ...
+[sol_x_exact,~,sol_path] = ...
     BPDN_exact_algorithm(A,b,tol_exact,max_iter,disp_output_exact,run_opt_cond_checks);
 time_total_exact = toc;
 
@@ -66,7 +67,7 @@ disp(['Total time elasped for calculating the solution path to BPDN via gradient
     num2str(time_total_exact), ' seconds.'])
 disp('----------')
 disp(' ')
-disp(['Length of the path: ',num2str(length(sol_path))])
+disp(['Length of the path: ',num2str(length_path)])
 disp(['Basis Pursuit solution (residual -- Exact solution to BPDN via gradient inclusions): ||A*sol_x_exact(:,end)-b||_2 = ',num2str(norm(A*sol_x_exact(:,end)-b))])
 disp(['Basis Pursuit solution (obj function -- Exact solution to BPDN via gradient inclusions): ||sol_x_exact(:,end)||_{1} = ',num2str(norm(sol_x_exact(:,end),1))])
 
@@ -83,7 +84,7 @@ if(use_bp)
     
     % Call the BP solver
     tic
-    [sol_x_bp, sol_p_bp] = BP_exact_algorithm(A,b,tol_bp,disp_output_bp);
+    [sol_x_bp, ~] = BP_exact_algorithm(A,b,-b/norm(A.'*b,inf),tol_bp,disp_output_bp);
     time_bp = toc;
 
     % Display some information
