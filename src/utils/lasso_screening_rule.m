@@ -1,4 +1,4 @@
-function ind = lasso_screening_rule(t_next,t,p,A)
+function ind = lasso_screening_rule(ratio,p,A)
 % lasso_screening_rule      Computes a set of indices {1,\dots,n} over 
 %                           which the solution is guaranteed to land on.
 %                           This uses an improved version of the LASSO
@@ -6,20 +6,24 @@ function ind = lasso_screening_rule(t_next,t,p,A)
 %                           rules for  discarding predictors in lasso-type 
 %                           problems" by Tibshirani et al. (2012).
 %
+%                           Note: The selection rule is adjusted to the
+%                           problem min_{x} {0.5/t||Ax-b||^2_2 + ||x||_1 
+%
 %   Input
-%       t_next  -   positive hyperparameter of the next LASSO solution.
-%       t       -   positive hyperparameter of the previous LASSO solution.
+%       ratio   -   ratio of tnext/t positive hyperparameters
 %       p       -   m dimensional col vector. Previous dual solution at
 %                   parameter t.
 %       A       -   m by n design matrix of the LASSO problem.
+%
+%   Output
+%       ind     -   n-dim col vector of boolean values. An entry is true
+%                   if the next x solution can be nonnegative. An entry
+%                   of false guarantees the solution is zero.
 
-% Take a convex combination of the previous solution with the empirical
-% distribution, using the current and previous hyperparameters.
-beta = t_next/t;
 
 % Compute the lhs and rhs of the criterion and compare them.
-lhs = abs((p.'*A).');   
-rhs = beta*(t_next-(vecnorm(A,2).'*norm(p)*(1-beta)));
+lhs = abs((p.'*A).') - 1e-08;   
+rhs = ratio*(ratio-(vecnorm(A,2).'*norm(p)*(1-ratio)));
     
 ind = lhs >= rhs;
 end

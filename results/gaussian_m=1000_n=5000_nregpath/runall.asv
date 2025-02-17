@@ -1,6 +1,8 @@
 %% runall script
 %   This script compares the BPDN_inclusions_solver, lasso_fista_solver,
 %   and glmnet solver at different hyperparameter values on Gaussian data.
+%
+%   gaussian data, m = 100, n = 500, = no regularization path is used
 
 
 
