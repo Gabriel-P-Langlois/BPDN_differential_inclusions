@@ -9,15 +9,15 @@
 
 %% Initialization
 % Nb of samples and features
-m = 1000;
-n = 5000;
+m = 5;
+n = 500;
 use_fista = false;
 
 % Signal-to-noise ratio, value of nonzero coefficients, and
 % proportion of nonzero coefficients in the signal.
 SNR = 1;
 val_nonzero = 1;
-prop = 0.02;
+prop = 0.04;
 
 % Tolerance levels
 tol = 1e-10;
@@ -25,9 +25,9 @@ tol_glmnet = 1e-10;
 tol_fista = tol;
 
 % Grid of hyperparameters
-spacing = -0.005;
-max = 0.995;
-min = 0.005;
+spacing = -0.01;
+max = 0.99;
+min = 0.01;
 
 
 %% Generate data
@@ -145,3 +145,6 @@ if(use_fista)
     disp('Done.')
     disp(' ')
 end
+
+
+summarize_1000_5000_regpath = true;

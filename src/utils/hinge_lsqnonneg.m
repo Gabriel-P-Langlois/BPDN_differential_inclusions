@@ -23,6 +23,7 @@ function [x,d] = hinge_lsqnonneg(A,b,tol)
 %   Note 2: Using QR for stability and QR delete/updates.
 
 
+
 %% Initialization
 % Solve the system Ax = b using the QR decomposition.
 [Q,R] = qr(A,"econ","vector");
@@ -31,7 +32,7 @@ a = R\tmp;
 rho = b - Q*(R*a);
 
 % Check if the solution is positive. If true, we are done. Else, proceed.
-if(min(a) > tol)
+if(min(a) >= tol)
     x = a;
     d = -rho;
     return
@@ -46,7 +47,7 @@ end
 active_set = true(n,1);
 
 while(true)
-    if(min(a) < -tol)
+    if(min(a) < tol)
         x = zeros(n,1);
         x(active_set) = a;
         [~,I] = min(x);
