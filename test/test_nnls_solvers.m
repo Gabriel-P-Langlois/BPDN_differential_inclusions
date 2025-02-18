@@ -3,23 +3,10 @@
 % its efficiency vs the MATLAB implementation
 
 
-%% NOTES
-%
-%   1)  Using (m < n, active_set = true(n,1)) makes the hinge algorithm
-%       behave badly. This is expected; this result in solving an over
-%       determined system, so the linear solver will behave poorly.
-%
-%       In practice, we will always have n_eff < m, so we're fine.
-%
-%   2)  Using active_set = false(n,1) in the hinge algorithm yields the
-%       Lawson-Hanson algorithm.
-
-
-
 %% Input and options
 % Nb of samples and features
-m = 200;
-n = 1000;
+m = 1000;
+n = 5000;
 
 % Initial active set of the hinge algorithm
 active_set = false(n,1);
@@ -41,24 +28,38 @@ x_lsqnonneg = lsqnonneg(A,b);
 p_lsqnonneg = A*x_lsqnonneg - b;
 time_nnls1 = toc;
 
-disp(["Total time for MATLAB's lsqnonneg algorithm: ", ...
-    num2str(time_nnls1)])
+disp(["Total time for MATLAB's lsqnonneg algorithm: ", num2str(time_nnls1)])
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% 2) Meyers's nnls solver
+% 2) Meyers's nnls solver with full active set
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic
-[x_hinge,p_hinge] = hinge_lsqnonneg(A,b,active_set,tol);
+[x_hinge,p_hinge] = hinge_lsqnonneg(A,b,tol);
 time_nnls2 = toc;
 
-disp(["Total time for Meyers's algorithm: ", ...
-    num2str(time_nnls2)])
+disp(["Total time for Meyers's algorithm: ", num2str(time_nnls2)])
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 3) Meyers's nnls solver with full active set (MEX file)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+tic
+[x_hinge_mex,p_hinge_mex] = hinge_lsqnonneg_mex(A,b,tol);
+time_nnls2_mex = toc;
+
+disp(["Total time for Meyers's algorithm (MEX): ", num2str(time_nnls2_mex)])
 
 
 %% Comparison between the two solvers
+% Compare relative magnitude of the dual solutions 
 disp(["norm(p_lsqnonneg-p_hinge,inf) = ", ...
-    num2str(norm(p_lsqnonneg-p_hinge,inf))])
+    num2str(norm(p_lsqnonneg-p_hinge,inf)/norm(p_lsqnonneg,inf))])
 
-disp(["norm(x_lsqnonneg-x_hinge,inf) = ", ...
-    num2str(norm(x_lsqnonneg-x_hinge))])
+% Check that norm(p_lsqnonneg) and norm(p_hinge) = 0.
+disp(["norm(p_lsqnonneg,inf) = ", num2str(norm(p_lsqnonneg,inf))])
+disp(["norm(p_hinge,inf) = ", num2str(norm(p_hinge,inf))])
+
+% Verify that A.'*p >= 0
+disp(["min(A.'*p_lsqnonneg + tol): ", num2str(min(A.'*p_lsqnonneg + tol))])
+disp(["min(A.'*p_hinge + tol): ", num2str(min(A.'*p_hinge + tol))])
