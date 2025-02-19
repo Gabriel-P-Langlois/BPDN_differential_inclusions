@@ -1,8 +1,8 @@
 %%  summarize script
 %   This script summarizes the results from the runall.m file located for
-%   the gaussian_m=1000_n=5000_regpath runall script.
+%   the gaussian_m=1000_n=5000_nregpath runall script.
 
-if(summarize_1000_5000_regpath)
+if(summarize_1000_5000_nregpath)
     norm_primal_glmnet_incl = zeros(kmax,1);
     norm_primal_fista_incl = zeros(kmax,1);
     norm_primal_fista_glmnet = zeros(kmax,1);

@@ -18,20 +18,11 @@ function [sol_x, sol_p] = BPDN_inclusions_solver(A,b,p0,t,tol)
 %                   (A,b) within tolerance level tol.
 %       sol_p   -   Dual solution to BPDN at hyperparamter t and data
 %                   (A,b) within tolerance level tol.
-%
-%
-%% TODO
-%
-%1)    Once that's done, create a copy of this code + hinge lsqnnoneg
-%       and create fast_* methods instead. The fast methods will precompute
-%       the QR decomposition OUTSIDE of the hinge_lsqnnonneg and update
-%       it appropriately. This is the one remaining bottleneck.
 
-%       There seems to be an error with the BPDN inclusions code for small
-%       data sizes? glmnet/fista do not agree with my inclusion algorithm
-%       NOTE: This has NOTHING to do with the hinge solver; the lsqnonneg
-%       encounters the same error...? Actually, sometimes the inclusion
-%       algorithm is better...?
+
+%% Notes
+%   1)  This differential inclusion solver uses the QR decomposition 
+%       to improve effiency.
 
 
 %% Initialization
@@ -50,19 +41,41 @@ eq_set = (abs(Atop_times_p) >= tol_minus);
 vec_of_signs = sign(-Atop_times_p);
 K = A(:,eq_set).*(vec_of_signs(eq_set).');
 
+% Perform the QR decomposition
+[Q,R] = qr(K,"econ","vector");
+
 
 %% Compute the trajectory of the slow system in a piecewise fashion
 while(true)
-    % Solve the NNLS problem
-    % min_{u >= 0} ||K*u - b - t*p||^2 and compute d = K*u - b - t*p.
     
-    [u,d] = hinge_lsqnonneg(K,b + t*sol_p,tol);
-   
-    % Compute the maximum descent time over the set where abs(A.'*d) >= 0
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Compute the NNLS problem 
+    % min_{u>=0} ||K*u - b + t*sol_p||_{2}^{2}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    % Compute first the least-squares solution.
+    rhs = b + t*sol_p;
+    tmp = (rhs.'*Q).';
+    u = R\tmp;
+
+    % Check if the least squares solution is positive. 
+    % If not, invoke the method of hinges 
+    % with full active set to solve it.
+
+    if(min(u) > -tol)
+        d = Q*(R*u) - rhs;
+    else
+        [u,d] = hinge_lsqnonneg(K,Q,R,u,rhs,tol);
+    end
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Compute the maximum descent time 
+    % over the set where abs(A.'*d) >= 0
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
     Atop_times_d = (d.'*A).';
     pos_set = abs(Atop_times_d) > tol;
     timestep = inf;
-    
     if (any(pos_set))
         term1 = vec_of_signs.*Atop_times_d;
         term2 = vec_of_signs.*Atop_times_p;
@@ -73,10 +86,15 @@ while(true)
         timestep = min(vec);
     end
 
-
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Check for convergence
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
     if(timestep == inf)
         sol_x(eq_set) = vec_of_signs(eq_set).*u;
+        if(t > 0)
+            sol_p = sol_p + d/t;
+        end
         break;
     elseif(t > 0 && timestep*t > tol_minus)
         sol_x(eq_set) = vec_of_signs(eq_set).*u;
@@ -84,13 +102,22 @@ while(true)
         break;
     end
 
-    % Update the dual vector sol_p, A.'*sol_p, and the equicorrelation set
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Update quantities and reassemble the effective matrix
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    % Dual solution p and the vector Atop_times_p = A.'*p
     sol_p = sol_p + timestep*d;
     Atop_times_p = Atop_times_p + timestep*Atop_times_d;
-    eq_set = (abs(Atop_times_p) >= tol_minus); 
 
-    % Compute the vector of signs and assemble the effective matrix
+    % Equicorrelation set and the vector of signs
+    eq_set = (abs(Atop_times_p) >= tol_minus); 
     vec_of_signs = sign(-Atop_times_p);
+    
+    % Assemble the effective matrix
     K = A(:,eq_set).*(vec_of_signs(eq_set).');
+
+    % Update the QR decomposition
+    [Q,R] = qr(K,"econ","vector");  % BOTTLENECK
 end
 end

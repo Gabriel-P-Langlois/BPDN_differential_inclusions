@@ -9,15 +9,15 @@
 
 %% Initialization
 % Nb of samples and features
-m = 5;
-n = 500;
+m = 1000;
+n = 5000;
 use_fista = false;
 
 % Signal-to-noise ratio, value of nonzero coefficients, and
 % proportion of nonzero coefficients in the signal.
 SNR = 1;
 val_nonzero = 1;
-prop = 0.04;
+prop = 0.05;
 
 % Tolerance levels
 tol = 1e-10;
@@ -147,4 +147,5 @@ if(use_fista)
 end
 
 
+% Set summarize flag to true
 summarize_1000_5000_regpath = true;
