@@ -17,11 +17,6 @@ function [x,p] = hinge_algorithm(A,y,active_set)
 %       p           -   n dimensional col solution vector to the optimization
 %                       problem.
 
-%% TODO
-% Rewrite the code of this algorithm -- the variable names used do not
-% reflect the variables in the optimization problem itself!
-
-
 
 %% Initialization
 [m,~] = size(A);

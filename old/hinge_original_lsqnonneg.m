@@ -1,4 +1,4 @@
-function [x,d] = hinge_lsqnonneg(A,Q,R,u,b,tol)
+function [x,d,eq_set] = hinge_qr_lsqnonneg(A,Q,R,u,b,eq_set,tol)
 % HINGE_LSQNONNEG   This function computes the nonnegative LSQ problem
 %                   min_{x>=0} ||A*x-b||_{2}^{2}
 %                   using the ``Method of Hinges" presented in
@@ -25,12 +25,21 @@ function [x,d] = hinge_lsqnonneg(A,Q,R,u,b,tol)
 %                           least-squares solution to 
 %                           min_{x \in \Rn} ||Ax - b||_{2}^{2}.
 %           b           -   m-dimensional col data vector.
+%
+%           eq_set      -   equicorrelation set of the BPDN problem
+%
 %           tol         -   small number specifying the tolerance
 %                           (e.g., 1e-08).
 %
 %   Output
-%           x   -   n-dimemsional col solution vector to the NNLS problem
-%           d   -   m-dimensional col residual vector d = A*x-b
+%           x   -   neff-dimemsional col solution vector of nonzero
+%                   coefficients to the NNLS problem, where neff = 
+%                   sum(non-zero components to the NNLS solution).
+%
+%           d   -   m-dimensional col residual vector d = A(:,neff)*x-b
+%
+%           eq_set      -   Updated equicorrelation set of the BPDN problem
+%                           It is is strictly ``less" than the input.
 %
 %
 %   Note 1: This version of Meyers' Method of Hinges starts with
@@ -48,6 +57,7 @@ function [x,d] = hinge_lsqnonneg(A,Q,R,u,b,tol)
 active_set = true(n,1);
 
 while(true)
+    remove_update = false;
     if(min(u) < tol)
         x = zeros(n,1);
         x(active_set) = u;
@@ -61,7 +71,6 @@ while(true)
 
         if(val > tol)
             active_set(I) = true;
-            remove_update = false;
         else
             break;
         end
@@ -82,7 +91,6 @@ while(true)
         Q(:,nq)=[];
     else
         [Q,R] = qr(A(:,active_set),"econ","vector");
-        % Note: In practice, the else statement is never reached?
     end
 
     % Compute the solution to Q*R = b.
@@ -90,7 +98,11 @@ while(true)
     u = R\tmp;
 end
 
-% Calculate final solution and its residual
-x = zeros(n,1); x(active_set) = u;
+% Update the equicorrelation set and 
+ind = find(eq_set);
+eq_set(ind(~active_set)) = 0;
+
+% Return the solution vector x and the residual d = A*x-b
+x = u;
 d = -rho;
 end

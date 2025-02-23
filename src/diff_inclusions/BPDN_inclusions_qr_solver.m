@@ -1,4 +1,4 @@
-function [sol_x, sol_p] = BPDN_inclusions_solver(A,b,p0,t,tol)
+function [sol_x, sol_p] = BPDN_inclusions_qr_solver(A,b,p0,t,tol)
 % BPDN_inclusions_solver    Computes the primal and dual solutions of the 
 %                           BPDN problem \{min_{x \in \Rn} 
 %                               \frac{1}{2t}\normsq{Ax-b} + ||x||_1 \},
@@ -20,11 +20,6 @@ function [sol_x, sol_p] = BPDN_inclusions_solver(A,b,p0,t,tol)
 %                   (A,b) within tolerance level tol.
 
 
-%% Notes
-%   1)  This differential inclusion solver uses the QR decomposition 
-%       to improve effiency.
-
-
 %% Initialization
 [~,n] = size(A);
 tol_minus = 1-tol;
@@ -35,14 +30,19 @@ sol_p = p0;
 Atop_times_p = (sol_p.'*A).';
 
 % Initialize the equicorrelation set
-eq_set = (abs(Atop_times_p) >= tol_minus); 
+eq_set = (abs(Atop_times_p) >= tol_minus);
 
 % Compute sign(-A.'*p) and assemble the effective matrix
 vec_of_signs = sign(-Atop_times_p);
 K = A(:,eq_set).*(vec_of_signs(eq_set).');
 
 % Perform the QR decomposition
-[Q,R] = qr(K,"econ","vector");
+[Q,R] = qr(K);
+
+% Set options for the linsolve internal MATLAB function.
+% Note: With the QR decomposition, we solve only linear systems involving
+% an upper triangular matrix.
+opts.UT = true;
 
 
 %% Compute the trajectory of the slow system in a piecewise fashion
@@ -53,19 +53,24 @@ while(true)
     % min_{u>=0} ||K*u - b + t*sol_p||_{2}^{2}
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    % Compute first the least-squares solution.
+    % Compute the least-squares solution.
+    % Note: We use the economical forms of the matrices Q and R for this.
     rhs = b + t*sol_p;
-    tmp = (rhs.'*Q).';
-    u = R\tmp;
+    neff = sum(eq_set);
+    tmp = (rhs.'*Q(:,1:neff)).';
+    u = linsolve(R(1:neff,:),tmp,opts);
+
 
     % Check if the least squares solution is positive. 
     % If not, invoke the method of hinges 
-    % with full active set to solve it.
-
+    % with full active set and compute its solution.
     if(min(u) > -tol)
-        d = Q*(R*u) - rhs;
+        tmp2 = R*u;
+        d = Q*tmp2;
+        d = d - rhs;
     else
-        [u,d] = hinge_lsqnonneg(K,Q,R,u,rhs,tol);
+        [u,d,eq_set,Q,R] = ...
+            hinge_qr_lsqnonneg(K,Q,R,u,rhs,eq_set,opts,tol);
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -103,7 +108,7 @@ while(true)
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Update quantities and reassemble the effective matrix
+    % Update dual solution and the equicorrelation set
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     % Dual solution p and the vector Atop_times_p = A.'*p
@@ -111,13 +116,43 @@ while(true)
     Atop_times_p = Atop_times_p + timestep*Atop_times_d;
 
     % Equicorrelation set and the vector of signs
-    eq_set = (abs(Atop_times_p) >= tol_minus); 
+    new_eq_set = (abs(Atop_times_p) >= tol_minus); 
     vec_of_signs = sign(-Atop_times_p);
-    
-    % Assemble the effective matrix
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Update the QR decomposition
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    % Extract new element added to the equicorrelation set
+    ind = setxor(find(eq_set),find(new_eq_set));
+
+    % Update the equicorrelation set and assemble the effective matrix
+    eq_set = new_eq_set;
     K = A(:,eq_set).*(vec_of_signs(eq_set).');
 
-    % Update the QR decomposition
-    [Q,R] = qr(K,"econ","vector");  % BOTTLENECK
+    % Check that only one element is added. If so, use qrinsert.
+    % Note: Multiple columns updates are not supported.
+    if(isscalar(ind))
+        % Extract the column to insert
+        col = A(:,ind);
+
+        % Locate where to insert the column
+        loc = find(find(eq_set) == ind);
+
+        % Update the QR decomposition
+        if(~isempty(loc))
+            % The following is equivalent to [Q,R] = qrinser(Q,R,loc,col);
+            % Some overhead has been removed to optimize for speed.
+            [~,nr] = size(R);
+            R(:,loc+1:nr+1) = R(:,loc:nr);
+            R(:,loc) = (col.'*Q).';
+            [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
+        else    % Error caught due inaccuracies; recompute QR decomposition
+            [Q,R] = qr(K);
+        end
+
+    else % Multiple updates not supported.
+        [Q,R] = qr(K);
+    end
 end
 end

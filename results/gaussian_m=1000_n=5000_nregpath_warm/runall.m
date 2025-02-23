@@ -4,14 +4,17 @@
 %
 %   If enabled, the fista solver is also used.
 %
-%   Specifications: Gaussian data (fixed grid, no regularization path)
+%   Specifications: Gaussian data \w fixed grid.
+%                   GLMNET and FISTA use a regularization path strategy.
+%                   BPDN use a semi-regularization path strategy (only
+%                   uses warm starts in a crude way).
 
 
 %% Initialization
 % Nb of samples and features
-m = 100;
-n = 500;
-use_fista = true;
+m = 1000;
+n = 5000;
+use_fista = false;
 
 % Signal-to-noise ratio, value of nonzero coefficients, and
 % proportion of nonzero coefficients in the signal.
@@ -20,14 +23,14 @@ val_nonzero = 1;
 prop = 0.05;
 
 % Tolerance levels
-tol = 1e-10;
-tol_glmnet = 1e-10;
+tol = 1e-08;
+tol_glmnet = 1e-08;
 tol_fista = tol;
 
 % Grid of hyperparameters
-spacing = -0.01;
-max = 0.99;
-min = 0.01;
+spacing = -0.005;
+max = 0.995;
+min = 0.005;
 
 
 %% Generate data
@@ -56,9 +59,17 @@ sol_incl_p = zeros(m,kmax);
 disp('Running the differential inclusions algorithm for the BPDN problem...')
 
 tic
-for k=1:1:kmax
-    [sol_incl_x(:,k), sol_incl_p(:,k)] = ...
-        BPDN_inclusions_solver(A,b,p0,t(k),tol);
+% k == 1
+[sol_incl_x(:,1), sol_incl_p(:,1)] = ...
+    BPDN_inclusions_qr_solver(A,b,p0,t(1),tol);
+
+% k >= 2
+for k=2:1:kmax
+    % Selection rule
+    ind = lasso_screening_rule(t(k)/t(k-1),sol_incl_p(:,k-1),A);
+
+    [sol_incl_x(ind,k), sol_incl_p(:,k)] = ...
+        BPDN_inclusions_qr_solver(A(:,ind),b,sol_incl_p(:,k-1),t(k),tol);
 end
 disp('Done.')
 time_incl_alg = toc;
@@ -75,19 +86,17 @@ time_incl_alg = toc;
 
 %   Note 3: Unlike the exact lasso algorithm, the dual solution is Ax-b.
 
-sol_glmnet_x = zeros(n,kmax);
 sol_glmnet_p = zeros(m,kmax); 
 warning('off');
 time_glmnet_alg = 0;
 
-
 % Run MATLAB's native lasso solver, flip it, and rescale the dual solution
 disp('Running the GLMNET algorithm for the BPDN problem...')
 tic
+sol_glmnet_x = lasso(sqrt(m)*A,sqrt(m)*b, 'lambda', t, ...
+    'Intercept', false, 'RelTol', tol_glmnet);
+sol_glmnet_x = flip(sol_glmnet_x,2);
 for k=1:1:kmax
-    sol_glmnet_x(:,k) = lasso(sqrt(m)*A,sqrt(m)*b, 'lambda', t(k), ...
-        'Intercept', false, 'RelTol', tol_glmnet);
-    sol_glmnet_x(:,k) = flip(sol_glmnet_x(:,k),2);
     sol_glmnet_p(:,k) = (A*sol_glmnet_x(:,k)-b)/t(k);
 end
 time_glmnet_alg = time_glmnet_alg + toc;
@@ -116,12 +125,22 @@ if(use_fista)
     
     % Run the FISTA solver and rescale the dual solution
     tic
-    for k=1:1:kmax
-
-        % Compute solution
-        [sol_fista_x(:,k),sol_fista_p(:,k),num_iters] = ...
-            lasso_fista_solver(sol_fista_x(:,1),p0,t(k),...
+    
+    % k == 1
+    [sol_fista_x(:,1),sol_fista_p(:,1),num_iters] = ...
+            lasso_fista_solver(x0,p0,t(1),...
             A,b,tau,max_iters,tol_fista,min_iters);
+    sol_fista_p(:,1) = sol_fista_p(:,1)/t(1);
+    
+    % k >= 2
+    for k=2:1:kmax
+        % Selection rule
+        ind = lasso_screening_rule(t(k)/t(k-1),sol_fista_p(:,k-1),A);
+    
+        % Compute solution
+        [sol_fista_x(ind,k),sol_fista_p(:,k),num_iters] = ...
+            lasso_fista_solver(sol_fista_x(ind,k-1),sol_fista_p(:,k-1),t(k),...
+            A(:,ind),b,tau,max_iters,tol_fista,min_iters);
         sol_fista_p(:,k) = sol_fista_p(:,k)/t(k);
     end
     time_fista_alg = toc;
@@ -132,4 +151,4 @@ end
 
 
 % Set summarize flag to true
-summarize_1000_5000_nregpath = true;
+summarize_1000_5000_nregpath_warm = true;

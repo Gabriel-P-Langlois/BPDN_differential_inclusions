@@ -4,13 +4,16 @@
 %
 %   If enabled, the fista solver is also used.
 %
-%   Specifications: Gaussian data (fixed grid, regularization path)
+%   Specifications: Gaussian data \w fixed grid.
+%                   GLMNET and FISTA use a regularization path strategy.
+%                   BPDN_inclusions uses a highly optimized regularization
+%                   path strategy.
 
 
 %% Initialization
 % Nb of samples and features
 m = 1000;
-n = 5000;
+n = 100000;
 use_fista = false;
 
 % Signal-to-noise ratio, value of nonzero coefficients, and
@@ -20,8 +23,8 @@ val_nonzero = 1;
 prop = 0.05;
 
 % Tolerance levels
-tol = 1e-10;
-tol_glmnet = 1e-10;
+tol = 1e-08;
+tol_glmnet = 1e-08;
 tol_fista = tol;
 
 % Grid of hyperparameters
@@ -51,25 +54,11 @@ kmax = length(t);
 % Diff. Inclusions: BPDN + BP \w selection rule
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-sol_incl_x = zeros(n,kmax);
-sol_incl_p = zeros(m,kmax);
 disp('Running the differential inclusions algorithm for the BPDN problem...')
-
 tic
-% k == 1
-[sol_incl_x(:,1), sol_incl_p(:,1)] = ...
-    BPDN_inclusions_solver(A,b,p0,t(1),tol);
-
-% k >= 2
-for k=2:1:kmax
-    % Selection rule
-    ind = lasso_screening_rule(t(k)/t(k-1),sol_incl_p(:,k-1),A);
-
-    [sol_incl_x(ind,k), sol_incl_p(:,k)] = ...
-        BPDN_inclusions_solver(A(:,ind),b,sol_incl_p(:,k-1),t(k),tol);
-end
-disp('Done.')
+[sol_incl_x,sol_incl_p] = BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
 time_incl_alg = toc;
+disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
 
 
 %%%%%%%%%%%%%%%%%%%%
