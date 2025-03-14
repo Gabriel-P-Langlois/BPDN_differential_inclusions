@@ -20,12 +20,12 @@ if(summarize_1000_5000_regpath)
             sol_glmnet_p(:,k).'*b;
         dual_obj_incl(k) = 0.5*t(k)*norm(sol_incl_p(:,k),2)^2 + ...
             sol_incl_p(:,k).'*b;
-        norm_dual_obj_glmnet_incl(k) = dual_obj_incl(k) - dual_obj_glmnet(k);
+        norm_dual_obj_glmnet_incl(k) = (dual_obj_incl(k) - dual_obj_glmnet(k))/dual_obj_incl(k);
 
         norm_dual_glmnet_incl(k) = norm(sol_glmnet_p(:,k)-sol_incl_p(:,k),inf)/...
-            norm(sol_glmnet_p(:,k),inf);
+            norm(sol_incl_p(:,k),inf);
         norm_primal_glmnet_incl(k) = norm(sol_glmnet_x(:,k)-sol_incl_x(:,k),inf)/...
-            norm(sol_glmnet_x(:,k),inf);
+            norm(sol_incl_x(:,k),inf);
     end
 
 

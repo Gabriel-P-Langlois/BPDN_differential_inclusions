@@ -1,5 +1,5 @@
 function [u,d,eq_set,Q,R] = ...
-    hinge_qr_lsqnonneg(A,Q,R,u,b,eq_set,opts,tol)
+    hinge_qr_lsqnonneg(A,Q,R,b,eq_set,opts,tol)
 % HINGE_LSQNONNEG   This function computes the nonnegative LSQ problem
 %                   min_{x>=0} ||A*x-b||_{2}^{2}
 %                   using the ``Method of Hinges" presented in
@@ -19,8 +19,6 @@ function [u,d,eq_set,Q,R] = ...
 %           R           -   (n x n)-dimensional, economic form of the
 %                           upper triangular matrix obtained from the QR
 %                           decomposition [Q,R] = qr(A,"econ","vector")
-%           u           -   n-dimensional column vector, which is the
-%                           least-squares solution to 
 %                           min_{x \in \Rn} ||Ax - b||_{2}^{2}.
 %           b           -   m-dimensional col data vector.
 %           eq_set      -   equicorrelation set of the BPDN problem
@@ -29,7 +27,7 @@ function [u,d,eq_set,Q,R] = ...
 %                           (e.g., 1e-08).
 %
 %   Output
-%           x   -   neff-dimemsional col solution vector of nonzero
+%           u   -   neff-dimemsional col solution vector of nonzero
 %                   coefficients to the NNLS problem, where neff = 
 %                   sum(non-zero components to the NNLS solution).
 %           d   -   m-dimensional col residual vector d = A(:,neff)*x-b
@@ -40,36 +38,44 @@ function [u,d,eq_set,Q,R] = ...
 %                   decomposition
 %
 %
-%   Note 1: This version of Meyers' Method of Hinges starts with
-%   active_set = {1,\dots,n\}, i.e., the active set starts full. This
-%   becomes much faster than using MATLAB's lsqnonneg method.
-%
-%   Note 2: Using QR for stability and QR column updates for speed.
+%   Note: This version of Meyers' Method of Hinges starts with
+%   active_set = {1,\dots,n\}, i.e., the active set is full.
 
 
-%% Algorithm: Method of Hinges
-% Start with the full active set and the least-squares solution
+%% Algorithm: Method of Hinges \w initial full active set
+% Compute the least squares solution \w the QR decomposition
+% and check that it's nonnegative. 
 [~, n] = size(A);
-active_set = true(n,1);
+tmp = (b.'*Q(:,1:n)).';
+u = linsolve(R(1:n,:),tmp,opts);
+if(min(u) > -tol)
+    tmp2 = R*u;
+    d = Q*tmp2;
+    d = d - b;
+    return
+end
 
+% Invoke the Meyers' Method of Hinges \w full active set to compute
+% the NNLS solution.
+active_set = true(n,1);
 while(true)
     remove_update = false;
     insert_update = false;
 
-    if(min(u) <= -tol)    % Check if the primal constraint is satisfied
+    if(min(u) <= -tol)      % Check if the primal constraint is satisfied
         x = zeros(n,1);
         x(active_set) = u;
         [~,I] = min(x);
         active_set(I) = false;
         remove_update = isscalar(I);
-    else
+    
+    else                    % Check if the dual constraint is satisfied
         tmp = R*u;
         theta = Q*tmp;
         theta = b - theta;
         Atop_times_rho = (theta.'*A);
         [val,I] = max(Atop_times_rho);
-
-        if(val >= tol)   % Check if the dual constraint is satisfied
+        if(val >= tol)   
             active_set(I) = true;
             insert_update = isscalar(I);
         else
@@ -101,13 +107,22 @@ while(true)
         [Q,R] = qr(A(:,active_set));
     end
 
-    % Compute LSQ solution to Q*R = b.
+    % Compute LSQ solution to QRu = b.
     [~,neff] = size(R);
     tmp = (b.'*Q(:,1:neff)).';
-    u = linsolve(R(1:neff,:),tmp,opts);
+    [u,reciprocal] = linsolve(R(1:neff,:),tmp,opts);
+
+    % Check if the linear solve is singular. If so,
+    % recompute the QR decomposition from scratch.
+    if(reciprocal < tol)
+        disp("Warning: Linear system is nearly singular. Recomputing QR decomposition")
+        [Q,R] = qr(A(:,active_set));
+        tmp = (rhs.'*Q).';
+        u = linsolve(R,tmp,opts);
+    end
 end
 
-% Update the equicorrelation set and 
+% Update the equicorrelation set.
 ind = find(eq_set);
 eq_set(ind(~active_set)) = 0;
 

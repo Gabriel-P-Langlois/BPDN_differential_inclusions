@@ -11,8 +11,8 @@
 
 %% Initialization
 % Nb of samples and features
-m = 1000;
-n = 5000;
+m = 100;
+n = 500;
 use_fista = false;
 
 % Signal-to-noise ratio, value of nonzero coefficients, and
@@ -45,6 +45,21 @@ p0 = -b/t0;
 
 disp('Running the BPDN homotopy solver...')
 tic
-[sol_incl_BP_x, sol_incl_BP_p, t] = BPDN_homotopy_solver(A,b,t0,p0,tol);
+[sol_homotopy_x, sol_homotopy_p, t] = BPDN_homotopy_solver(A,t0,p0,tol);
 disp('Done.')
 time_incl_homotopy_alg = toc;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Diff. Inclusions: Direct BPDN solver
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+disp('Running the differential inclusions algorithm for the BPDN problem...')
+tic
+[sol_incl_x,sol_incl_p] = BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
+time_incl_alg = toc;
+disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
+
+
+%% Summarize
+summarize_1000_2500_homotopy = true;

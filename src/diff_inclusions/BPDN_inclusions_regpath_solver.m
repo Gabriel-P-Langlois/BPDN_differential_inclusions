@@ -25,6 +25,10 @@ function [sol_x, sol_p] = BPDN_inclusions_regpath_solver(A,b,p0,t,tol)
 %                   hyperparameters.
 
 
+
+%% NOTES
+% Issue with use of d?
+
 %% Initialization
 [m,n] = size(A);
 kmax = length(t);
@@ -48,7 +52,6 @@ K = A(:,eq_set).*(vec_of_signs(eq_set).');
 % Perform the initial QR decomposition
 [Q,R] = qr(K);
 
-
 %% Regularization path
 for k=1:1:kmax  
     %% Compute the trajectory of the slow system in a piecewise fashion
@@ -56,119 +59,39 @@ for k=1:1:kmax
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Compute the NNLS problem 
-        % min_{u>=0} ||K*u - b + t*sol_p||_{2}^{2}
+        % min_{u>=0} ||K*u - (b + t*sol_p)||_{2}^{2}
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-        % Compute the least-squares solution.
-        % Note: We use the economical forms of the matrices Q and R for this.
+
         rhs = b + t(k)*sol_p(:,k);
-        neff = sum(eq_set);
-        tmp = (rhs.'*Q(:,1:neff)).';
-        u = linsolve(R(1:neff,:),tmp,opts);
-    
-        % Check if the least squares solution is positive. 
-        % If not, invoke the Method of Hinges
-        % with full active set and compute its solution.
-        if(min(u) > -tol)
-            tmp2 = R*u;
-            d = Q*tmp2;
-            d = d - rhs;
-        else
-            % Invoke the Method of Hinges to compute the solution to the
-            % NNLS problem.
-            % Note: The code below is equivalent to the call
-            %
-            % [u,d,eq_set,Q,R] = ...
-            %     hinge_qr_lsqnonneg(K,Q,R,u,rhs,eq_set,opts,tol);
-            %
-            % We invoke it here to avoid overhead and improve efficiency.
-
-            active_set = true(neff,1);
-            while(true)
-                remove_update = false;
-                insert_update = false;
-
-                if(min(u) <= -tol)   % Check primal constraint
-                    x = zeros(neff,1);
-                    x(active_set) = u;
-                    [~,I] = min(x);
-                    active_set(I) = false;
-                    remove_update = isscalar(I);
-                else
-                    tmp2 = R*u;
-                    d = Q*tmp2;
-                    d = rhs - d;
-                    Ktop_times_rho = (d.'*K);
-                    [val,I] = max(Ktop_times_rho);
-            
-                    if(val >= tol)  % Check dual constraint
-                        active_set(I) = true;
-                        insert_update = isscalar(I);
-                    else
-                        break;      % Exit; All constraints are satisfied.
-                    end
-                end
-
-                % Update the QR decomposition. 
-                if(remove_update)
-                    [~, J] = min(u);
-                    R(:,J) = [];
-
-                    [Q,R] = matlab.internal.math.deleteCol(Q,R,J);
-                elseif(insert_update)
-                    [~, J] = max(Ktop_times_rho);
-                    col = K(:,J);
-                    [~,nr] = size(R);
-                    R(:,J+1:nr+1) = R(:,J:nr);
-                    R(:,J) = (col.'*Q).';
-
-                    [Q,R] = matlab.internal.math.insertCol(Q,R,J);
-                else
-                    [Q,R] = qr(K(:,active_set));
-                end
-
-                % Compute LSQ solution to Q*R = b.
-                [~,neff2] = size(R);
-                tmp = (rhs.'*Q(:,1:neff2)).';
-                u = linsolve(R(1:neff2,:),tmp,opts);
-            end
-
-            % Update the equicorrelation set
-            ind = find(eq_set);
-            eq_set(ind(~active_set)) = 0;
-            
-            % Compute the residual d = A*x-b \equiv -d
-            d = -d;
-        end
-    
+        [u,d,eq_set,Q,R] = hinge_qr_lsqnonneg(K,Q,R,rhs,eq_set,opts,tol);
+ 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % Compute the maximum descent time 
-        % over the set where abs(A.'*d) >= 0
+        % Compute the maximum admissible descent time over the
+        % indices j \in {1,...,n} where abs(<A.'*d,ej>) >= 0.
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-        % Compute the 
+
         Atop_times_d = (d.'*A).';
-
         pos_set = abs(Atop_times_d) > tol;
         timestep = inf;
+
         if (any(pos_set))
             term1 = vec_of_signs.*Atop_times_d;
             term2 = vec_of_signs.*Atop_times_p;
             term3 = sign(term1);
             term4 = term3 - term2; 
-    
+
             vec = term4(pos_set)./term1(pos_set);
             timestep = min(vec);
         end
     
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % Check for convergence
+        % Check for convergence.
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
+
         if(timestep == inf)
             if(t(k) > 0)
-                sol_p(:,k) = sol_p(:,k) + d/t(k);
                 sol_x(eq_set,k) = vec_of_signs(eq_set).*u;
+                sol_p(:,k) = sol_p(:,k) + d/t(k);
             else
                 u = K\rhs;
                 sol_x(eq_set,k) = vec_of_signs(eq_set).*u;
@@ -178,22 +101,19 @@ for k=1:1:kmax
         elseif(t(k) > 0 && timestep*t(k) > tol_minus)
             sol_x(eq_set,k) = vec_of_signs(eq_set).*u;
             sol_p(:,k) = sol_p(:,k) + d/t(k);
-            break
+            break;
         end
     
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Update dual solution and the equicorrelation set
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
-        % Update the dual solution p, Atop_times_p and vector of signs
         sol_p(:,k) = sol_p(:,k) + timestep*d;
         Atop_times_p = Atop_times_p + timestep*Atop_times_d;
         vec_of_signs = sign(-Atop_times_p);
     
-        % Update the equicorrelation set
         new_eq_set = (abs(Atop_times_p) >= tol_minus); 
-        
-    
+
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Update the QR decomposition
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
