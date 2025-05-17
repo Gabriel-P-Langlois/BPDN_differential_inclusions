@@ -2,12 +2,10 @@
 %   This script compares the BPDN_inclusions_solver and glmnet solver at 
 %   different hyperparameter values on Gaussian data. 
 %
-%   If enabled, the fista solver is also used.
-%
 %   Specifications: Gaussian data \w fixed grid.
-%                   GLMNET and FISTA use a regularization path strategy.
-%                   BPDN use a semi-regularization path strategy (only
-%                   uses warm starts in a crude way).
+%                   GLMNET uses a regularization path strategy.
+%                   BPDN use a regularization path strategy.
+%                   A primal-dual method with log barrier is used too.
 
 
 %% Initialization
@@ -43,31 +41,37 @@ p0 = -b/t0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Diff. Inclusions: Direct Basis Pursuit Solver
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-disp('Running the differential inclusions algorithm for the BP problem...')
+disp(' ')
+disp('Running the differential inclusions Basis Pursuit solver...')
 tic
-[sol_incl_BP_x, sol_incl_BP_p] = BP_inclusions_solver(A,b,p0,tol);
-disp('Done.')
+[sol_incl_BP_x, sol_incl_BP_p, bp_count] = ...
+    BP_inclusions_solver(A,b,p0,tol);
 time_incl_BP_alg = toc;
+disp(['Done. Total time = ', num2str(time_incl_BP_alg), ' seconds.'])
+disp(['Total number of NNLS solves: ', num2str(bp_count), '.'])
+disp(' ')
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Diff. Inclusions: BPDN with regularization path
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-spacing = -0.01;
-max = 0.99;
+spacing = -0.005;
+max = 0.995;
 min = 0.0;
 t = t0 * (max:spacing:min);
 kmax = length(t);
 
-disp('Running the differential inclusions algorithm for the BPDN problem')
+disp(' ')
+disp(['Running the differential inclusions BPDN solver ' ...
+    'with regularization path...'])
 tic
-[sol_incl_BPDN_x,sol_incl_BPDN_p] = ...
+[sol_incl_BPDN_x,sol_incl_BPDN_p, bpdn_count] = ...
     BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
-time_incl_BPDN_alg = toc;
-disp(['Done. Total time = ', num2str(time_incl_BPDN_alg), ' seconds.'])
-
+time_incl_bpdn_alg = toc;
+disp(['Done. Total time = ', num2str(time_incl_bpdn_alg), ' seconds.'])
+disp(['Total number of NNLS solves: ', num2str(bpdn_count), '.'])
+disp(' ')
 
 %%%%%%%%%%%%%%%%%%%%
 % GLMNET
@@ -85,7 +89,8 @@ warning('off');
 time_glmnet_alg = 0;
 
 % Run MATLAB's native lasso solver, flip it, and rescale the dual solution
-disp('Running the GLMNET algorithm for the BPDN problem...')
+disp(['Running the GLMNET algorithm for the BPDN problem' ...
+    ' with regularization path'])
 tic
 sol_glmnet_x = lasso(sqrt(m)*A,sqrt(m)*b, 'lambda', t, ...
     'Intercept', false, 'RelTol', tol_glmnet);
@@ -94,7 +99,7 @@ for k=1:1:kmax
     sol_glmnet_p(:,k) = (A*sol_glmnet_x(:,k)-b)/t(k);
 end
 time_glmnet_alg = time_glmnet_alg + toc;
-disp('Done.')
+disp(['Done. Total time = ', num2str(time_glmnet_alg), ' seconds.'])
 disp(' ')
 
 

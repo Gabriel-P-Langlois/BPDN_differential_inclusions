@@ -14,7 +14,6 @@
 % Nb of samples and features
 m = 1000;
 n = 100000;
-use_fista = false;
 
 % Signal-to-noise ratio, value of nonzero coefficients, and
 % proportion of nonzero coefficients in the signal.
@@ -51,14 +50,15 @@ kmax = length(t);
 
 %% Solve BPDN using BPDN, GLMNET and, if enabled, FISTA.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Diff. Inclusions: BPDN + BP \w selection rule
+% Diff. Inclusions: BPDN
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 disp('Running the differential inclusions algorithm for the BPDN problem...')
 tic
-[sol_incl_x,sol_incl_p] = BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
+[sol_incl_x,sol_incl_p,~] = BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
 time_incl_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
+disp(' ')
 
 
 %%%%%%%%%%%%%%%%%%%%
@@ -74,9 +74,9 @@ disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
 
 sol_glmnet_p = zeros(m,kmax); 
 warning('off');
-time_glmnet_alg = 0;
 
 % Run MATLAB's native lasso solver, flip it, and rescale the dual solution
+disp(' ')
 disp('Running the GLMNET algorithm for the BPDN problem...')
 tic
 sol_glmnet_x = lasso(sqrt(m)*A,sqrt(m)*b, 'lambda', t, ...
@@ -85,56 +85,10 @@ sol_glmnet_x = flip(sol_glmnet_x,2);
 for k=1:1:kmax
     sol_glmnet_p(:,k) = (A*sol_glmnet_x(:,k)-b)/t(k);
 end
-time_glmnet_alg = time_glmnet_alg + toc;
-disp('Done.')
+time_glmnet_alg = toc;
+disp(['Done. Total time = ', num2str(time_glmnet_alg), ' seconds.'])
 disp(' ')
 
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%
-% FISTA + selection rule
-%%%%%%%%%%%%%%%%%%%%%%%%%
-if(use_fista)
-    sol_fista_x = zeros(n,kmax);
-    sol_fista_p = zeros(m,kmax);
-    max_iters = 50000;
-    min_iters = 100;
-
-    % Compute the L22 norm of the matrix A and tau parameter for FISTA
-    disp('Running FISTA algorithm...')
-    tic
-    L22 = svds(A,1)^2;
-    time_fista_L22 = toc;
-    
-    % Computer some parameters and options for FISTA
-    tau = 1/L22;
-    
-    % Run the FISTA solver and rescale the dual solution
-    tic
-    
-    % k == 1
-    [sol_fista_x(:,1),sol_fista_p(:,1),num_iters] = ...
-            lasso_fista_solver(x0,p0,t(1),...
-            A,b,tau,max_iters,tol_fista,min_iters);
-    sol_fista_p(:,1) = sol_fista_p(:,1)/t(1);
-    
-    % k >= 2
-    for k=2:1:kmax
-        % Selection rule
-        ind = lasso_screening_rule(t(k)/t(k-1),sol_fista_p(:,k-1),A);
-    
-        % Compute solution
-        [sol_fista_x(ind,k),sol_fista_p(:,k),num_iters] = ...
-            lasso_fista_solver(sol_fista_x(ind,k-1),sol_fista_p(:,k-1),t(k),...
-            A(:,ind),b,tau,max_iters,tol_fista,min_iters);
-        sol_fista_p(:,k) = sol_fista_p(:,k)/t(k);
-    end
-    time_fista_alg = toc;
-    time_fista_total = time_fista_alg + time_fista_L22;
-    disp('Done.')
-    disp(' ')
-end
-
-
 % Set summarize flag to true
-summarize_1000_5000_regpath = true;
+summarize_1000_100000_regpath = true;

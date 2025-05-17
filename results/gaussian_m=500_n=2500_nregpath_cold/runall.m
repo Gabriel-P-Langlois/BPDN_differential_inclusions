@@ -29,7 +29,7 @@ tol_fista = tol;
 % Grid of hyperparameters
 spacing = -0.05;
 max = 0.95;
-min = 0.05;
+min = 0.0;
 
 
 %% Generate data
@@ -50,20 +50,22 @@ kmax = length(t);
 
 %% Solve BPDN using BPDN, GLMNET and, if enabled, FISTA.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Diff. Inclusions: BPDN + BP \w selection rule
+% Diff. Inclusions: BPDN
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 sol_incl_x = zeros(n,kmax);
 sol_incl_p = zeros(m,kmax);
-disp('Running the differential inclusions algorithm for the BPDN problem...')
 
+disp(' ')
+disp('Running the differential inclusions algorithm for the BPDN problem...')
 tic
 for k=1:1:kmax
-    [sol_incl_x(:,k), sol_incl_p(:,k)] = ...
-        BPDN_inclusions_qr_solver(A,b,p0,t(k),tol);
+    [sol_incl_x(:,k), sol_incl_p(:,k),~] = ...
+        BPDN_inclusions_regpath_solver(A,b,p0,t(k),tol);
 end
-disp('Done.')
 time_incl_alg = toc;
+disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
+disp(' ')
 
 
 %%%%%%%%%%%%%%%%%%%%
@@ -84,6 +86,7 @@ time_glmnet_alg = 0;
 
 
 % Run MATLAB's native lasso solver, flip it, and rescale the dual solution
+disp(' ')
 disp('Running the GLMNET algorithm for the BPDN problem...')
 tic
 for k=1:1:kmax
@@ -93,7 +96,7 @@ for k=1:1:kmax
     sol_glmnet_p(:,k) = (A*sol_glmnet_x(:,k)-b)/t(k);
 end
 time_glmnet_alg = time_glmnet_alg + toc;
-disp('Done.')
+disp(['Done. Total time = ', num2str(time_glmnet_alg), ' seconds.'])
 disp(' ')
 
 
@@ -128,7 +131,7 @@ if(use_fista)
     end
     time_fista_alg = toc;
     time_fista_total = time_fista_alg + time_fista_L22;
-    disp('Done.')
+    disp(['Done. Total time = ', num2str(time_fista_total), ' seconds.'])
     disp(' ')
 end
 

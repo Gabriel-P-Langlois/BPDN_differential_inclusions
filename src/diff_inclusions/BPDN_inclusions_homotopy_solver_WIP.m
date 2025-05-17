@@ -1,4 +1,4 @@
-function [sol_x, sol_p, t] = BPDN_homotopy_solver(A,t0,p0,tol)
+function [sol_x, sol_p, t] = BPDN_inclusions_homotopy_solver(A,t0,p0,tol)
 % BPDN_inclusions_solver    Computes the primal and dual solutions of the 
 %                           BPDN problem \{min_{x \in \Rn} 
 %                               \frac{1}{2t}\normsq{Ax-b} + ||x||_1 \},
@@ -8,8 +8,10 @@ function [sol_x, sol_p, t] = BPDN_homotopy_solver(A,t0,p0,tol)
 %
 %   Input
 %       A       -   m by n design matrix of the BPDN problem
-%       b       -   m dimensional col data vector of the BPDN problem
-%       p0      -   m dimensional col initial value of the slow system
+%       t0      -   number equal to norminf(A.'*b);
+%       p0      -   m dimensional col initial value of the slow system.
+%                   Here, it should be -b/t0, where b is the m-dimensional
+%                   vector data.
 %       tol     -   small positive number (e.g., 1e-08)
 %
 %   Output
@@ -242,7 +244,7 @@ for k=1:1:kmax
                 loc = find(find(eq_set) == ind);
         
                 % Catch any errors due to innaccuracies.
-                if(~isempty(loc)) % Ok -- perform column update
+                if(~isempty(loc))
                     % The following is equivalent to [Q,R] = qrinser(Q,R,loc,col);
                     % Some overhead has been removed to optimize for speed.
                     [~,nr] = size(R);

@@ -1,10 +1,8 @@
-function [x,p] = hinge_algorithm(A,y,active_set)
+function [x,p] = hinge_original(A,y,active_set)
 % HINGE_ALGORITHM   Compute the unique solution to the problem
 %                   \min_{theta \in \Rn s.t. theta>=0} ||y-theta||^2
 %                   subject to A*theta >=0
 %                   using an active set method and warm start.
-%
-%               Tentative algorithm: Meyers' method of hinges
 %
 %   Input
 %       A           -   (m x n) matrix

@@ -6,15 +6,15 @@
 %
 %   Specifications: Gaussian data \w fixed grid.
 %                   GLMNET and FISTA use a regularization path strategy.
-%                   BPDN use a semi-regularization path strategy (only
-%                   uses warm starts in a crude way).
+%                   BPDN_inclusions uses a highly optimized regularization
+%                   path strategy.
 
 
 %% Initialization
 % Nb of samples and features
-m = 1000;
-n = 5000;
-use_fista = false;
+m = 2000;
+n = 4000;
+use_fista = true;
 
 % Signal-to-noise ratio, value of nonzero coefficients, and
 % proportion of nonzero coefficients in the signal.
@@ -28,9 +28,9 @@ tol_glmnet = 1e-08;
 tol_fista = tol;
 
 % Grid of hyperparameters
-spacing = -0.005;
-max = 0.995;
-min = 0.005;
+spacing = -0.01;
+max = 0.99;
+min = 0.0;
 
 
 %% Generate data
@@ -54,25 +54,11 @@ kmax = length(t);
 % Diff. Inclusions: BPDN + BP \w selection rule
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-sol_incl_x = zeros(n,kmax);
-sol_incl_p = zeros(m,kmax);
 disp('Running the differential inclusions algorithm for the BPDN problem...')
-
 tic
-% k == 1
-[sol_incl_x(:,1), sol_incl_p(:,1)] = ...
-    BPDN_inclusions_qr_solver(A,b,p0,t(1),tol);
-
-% k >= 2
-for k=2:1:kmax
-    % Selection rule
-    ind = lasso_screening_rule(t(k)/t(k-1),sol_incl_p(:,k-1),A);
-
-    [sol_incl_x(ind,k), sol_incl_p(:,k)] = ...
-        BPDN_inclusions_qr_solver(A(:,ind),b,sol_incl_p(:,k-1),t(k),tol);
-end
-disp('Done.')
+[sol_incl_x,sol_incl_p, ~] = BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
 time_incl_alg = toc;
+disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
 
 
 %%%%%%%%%%%%%%%%%%%%
@@ -88,7 +74,6 @@ time_incl_alg = toc;
 
 sol_glmnet_p = zeros(m,kmax); 
 warning('off');
-time_glmnet_alg = 0;
 
 % Run MATLAB's native lasso solver, flip it, and rescale the dual solution
 disp('Running the GLMNET algorithm for the BPDN problem...')
@@ -99,8 +84,8 @@ sol_glmnet_x = flip(sol_glmnet_x,2);
 for k=1:1:kmax
     sol_glmnet_p(:,k) = (A*sol_glmnet_x(:,k)-b)/t(k);
 end
-time_glmnet_alg = time_glmnet_alg + toc;
-disp('Done.')
+time_glmnet_alg = toc;
+disp(['Done. Total time = ', num2str(time_glmnet_alg), ' seconds.'])
 disp(' ')
 
 
@@ -145,10 +130,10 @@ if(use_fista)
     end
     time_fista_alg = toc;
     time_fista_total = time_fista_alg + time_fista_L22;
-    disp('Done.')
+    disp(['Done. Total time = ', num2str(time_fista_total), ' seconds.'])
     disp(' ')
 end
 
 
 % Set summarize flag to true
-summarize_1000_5000_nregpath_warm = true;
+summarize_2000_4000_regpath = true;

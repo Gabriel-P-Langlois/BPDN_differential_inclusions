@@ -1,5 +1,5 @@
-function [sol_x, sol_p] = BP_inclusions_solver(A,b,p0,tol)
-% BPDN_inclusions_solver    Computes the primal and dual solutions of the 
+function [sol_x, sol_p, count] = BP_inclusions_solver(A,b,p0,tol)
+% BP_inclusions_solver    Computes the primal and dual solutions of the 
 %                           BPDN problem \{min_{x \in \Rn} 
 %                               ||x||_1 s.t. A*x = b\},
 %                           up to the tolerance level tol, using
@@ -17,40 +17,40 @@ function [sol_x, sol_p] = BP_inclusions_solver(A,b,p0,tol)
 %                   (A,b) within tolerance level tol. (n,1) array
 %       sol_p   -   Dual solution to BPDN at hyperparamter t and data
 %                   (A,b) within tolerance level tol. (m,1) array
-
+%       count   -   Number of nonnegative least-squares solved performed.
 
 
 %% Initialization
+% Options, placeholders and initial conditions
 [~,n] = size(A);
 tol_minus = 1-tol;
-opts.UT = true;     % Option for the linsolve internal MATLAB function.
-                    % We use the QR decomposition \w R upper triangular.
-
-% Placeholders and initial condition
 sol_x = zeros(n,1);
 sol_p = p0;
 Atop_times_p = (sol_p.'*A).';
 
 % Initialize the equicorrelation set
-eq_set = (abs(Atop_times_p) > tol_minus);
+eq_set = (abs(Atop_times_p) >= tol_minus);
 
 % Compute sign(-A.'*p) and assemble the effective matrix
 vec_of_signs = sign(-Atop_times_p);
 K = A(:,eq_set).*(vec_of_signs(eq_set).');
 
-% Perform the initial QR decomposition
+% Perform the initial QR decomposition and set the opts field.
 [Q,R] = qr(K);
+opts.UT = true;
 
 
 %% Compute the trajectory of the slow system in a piecewise fashion
+count = 0;
 while(true)
-    
+    count = count + 1;
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Compute the NNLS problem 
     % min_{u>=0} ||K*u - b||_{2}^{2}
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    [~,d,eq_set,Q,R] = hinge_qr_lsqnonneg(K,Q,R,b,eq_set,opts,tol);          
+    [~,d,eq_set,Q,R] = hinge_qr_lsqnonneg(K,Q,R,b,eq_set,opts,tol);    
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Compute the maximum admissible descent time over the
@@ -82,54 +82,34 @@ while(true)
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Update dual solution and the equicorrelation set
+    % Updates
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    % Update the dual solution p, Atop_times_p and vector of signs
+    % Update sol_p, Atop_times_p, and sign(-Atop_times_p).
     sol_p = sol_p + timestep*d;
     Atop_times_p = Atop_times_p + timestep*Atop_times_d;
     vec_of_signs = sign(-Atop_times_p);
 
-    % Update the equicorrelation set
+    % Update the equicorrelation set and assemble the effective matrix.
     new_eq_set = (abs(Atop_times_p) >= tol_minus); 
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Update the QR decomposition
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-    % Extract new element added to the equicorrelation set
     ind = setxor(find(eq_set),find(new_eq_set));
-
-    % Update the equicorrelation set and assemble the effective matrix
-    K = A(:,new_eq_set).*(vec_of_signs(new_eq_set).');
-
-    if(length(ind) >= 1)
-        for k=1:1:length(ind)
-            % Extract the column to insert
-            col = A(:,ind(k));
-
-            % Locate where to insert the column
-            loc = find(find(new_eq_set) == ind(k));
-
-            % Catch any errors due to innaccuracies -- recompute the QR
-            % decomposition from scratch, then.
-            if(isempty(loc))
-                [Q,R] = qr(K);
-                break;
-            end
-
-            % The following is equivalent to [Q,R] = qrinsert(Q,R,loc,col);
-            % Some overhead has been removed to optimize for speed.
-            [~,nr] = size(R);
-            R(:,loc+1:nr+1) = R(:,loc:nr);
-            R(:,loc) = (col.'*Q).';
-            [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
-        end
-    else 
-        [Q,R] = qr(K);
-    end
-
-    % Update equicorrelation set
     eq_set = new_eq_set;
+    K = A(:,eq_set).*(vec_of_signs(eq_set).');
+
+    % Update the QR decomposition if only one column is added.
+    % Else, recompute the QR decomposition from scratch.
+    if(isscalar(ind))
+        % Extract new element added to eq_set and its column.
+        col = A(:,ind).*(vec_of_signs(ind).');
+        loc = find(find(eq_set) == ind);
+
+        % Execute [Q,R] = qrinsert(Q,R,loc,col) without overhead.
+        [~,nr] = size(R);
+        R(:,loc+1:nr+1) = R(:,loc:nr);
+        R(:,loc) = (col.'*Q).';
+        [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
+    else
+        [Q,R] = qr(K);  % Multiple column updates not supported
+    end
 end
 end

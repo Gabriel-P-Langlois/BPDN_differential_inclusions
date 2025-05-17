@@ -5,8 +5,8 @@
 
 %% Input and options
 % Nb of samples and features
-m = 1000;
-n = 5000;
+m = 100;
+n = 200;
 
 % Initial active set of the hinge algorithm
 active_set = false(n,1);
@@ -41,17 +41,23 @@ time_nnls2 = toc;
 disp(["Total time for Meyers's algorithm: ", num2str(time_nnls2)])
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% 3) Meyers's nnls solver with full active set (MEX file)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-tic
-[x_hinge_mex,p_hinge_mex] = hinge_lsqnonneg_mex(A,b,tol);
-time_nnls2_mex = toc;
-
-disp(["Total time for Meyers's algorithm (MEX): ", num2str(time_nnls2_mex)])
-
-
 %% Comparison between the two solvers
+% Compare relative magnitude of the primal solutions
+disp(["norm(x_lsqnonneg-x_hinge,2) = ", ...
+    num2str(norm(x_lsqnonneg-x_hinge,2)/norm(x_lsqnonneg,2))])
+
+disp(["norm(A*x_lsqnonneg-b,2) = ", ...
+    num2str(norm(A*x_lsqnonneg-b,2))])
+
+disp(["norm(A*x_hinge-b,2) = ", ...
+    num2str(norm(A*x_hinge-b,2))])
+
+disp(["norm(x_lsqnonneg,1) = ", ...
+    num2str(norm(x_lsqnonneg,1))])
+
+disp(["norm(x_hinge,1) = ", ...
+    num2str(norm(x_hinge,1))])
+
 % Compare relative magnitude of the dual solutions 
 disp(["norm(p_lsqnonneg-p_hinge,inf) = ", ...
     num2str(norm(p_lsqnonneg-p_hinge,inf)/norm(p_lsqnonneg,inf))])
