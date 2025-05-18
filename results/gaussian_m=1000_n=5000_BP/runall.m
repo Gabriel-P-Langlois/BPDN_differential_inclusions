@@ -10,8 +10,8 @@
 
 %% Initialization
 % Nb of samples and features
-m = 1000;
-n = 5000;
+m = 100;
+n = 500;
 use_fista = false;
 
 % Signal-to-noise ratio, value of nonzero coefficients, and

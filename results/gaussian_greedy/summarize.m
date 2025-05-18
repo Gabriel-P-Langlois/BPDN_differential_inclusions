@@ -24,14 +24,14 @@ if(summarize_greedy)
     disp('1. Norm of the residual Ax - b.')
     disp(['   ||A*sol_inclBP_x - b||_{2}^{2} = ', ...
         num2str(norm_residual_inclBP)])
-    disp(['   ||A*(x_g_feasible) - b||_{2}^{2} = ', ...
+    disp(['   ||A*(sol_g_xf) - b||_{2}^{2} = ', ...
         num2str(norm_residual_greedy_b)])
     disp(' ')
 
 
     disp('2. l1 norm of x satisfying Ax=b')
     disp([' ||sol_inclBP_x||_{1} = ', num2str(norm_l1_inclBP)])
-    disp([' ||x_g_feasible||_{1} = ', num2str(norm_l1_feasible)])
+    disp([' ||sol_g_xf||_{1} = ', num2str(norm_l1_feasible)])
     disp([' ||x_QR||_{1} = ', num2str(norm_l1_linsolve)])
     disp([' ||x_LU||_{1} = ', num2str(norm_l1_LUdecomp)])
     disp(' ')

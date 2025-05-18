@@ -51,7 +51,7 @@ kmax = length(t);
 
 %% Solve BPDN using BPDN, GLMNET and, if enabled, FISTA.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Diff. Inclusions: BPDN + BP \w selection rule
+% Diff. Inclusions: BPDN
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 disp('Running the differential inclusions algorithm for the BPDN problem...')

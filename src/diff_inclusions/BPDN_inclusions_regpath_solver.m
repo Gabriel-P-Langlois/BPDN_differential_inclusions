@@ -103,16 +103,16 @@ for k=1:1:kmax
 
         if(timestep == inf)
             if(t(k) > 0)
-                sol_x(eq_set,k) = vec_of_signs(eq_set).*u;
+                sol_x(eq_set,k) = vec_of_signs(eq_set).*u(u~=0);
                 sol_p(:,k) = sol_p(:,k) + d/t(k);
             else
-                u = K\rhs;
-                sol_x(eq_set,k) = vec_of_signs(eq_set).*u;
+                %u = K\rhs;
+                sol_x(eq_set,k) = vec_of_signs(eq_set).*u(u~=0);
             end
             break;
             
         elseif(t(k) > 0 && timestep*t(k) > tol_minus)
-            sol_x(eq_set,k) = vec_of_signs(eq_set).*u;
+            sol_x(eq_set,k) = vec_of_signs(eq_set).*u(u~=0);
             sol_p(:,k) = sol_p(:,k) + d/t(k);
             break;
         end

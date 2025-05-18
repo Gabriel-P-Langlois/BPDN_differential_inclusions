@@ -56,6 +56,8 @@ time_greedy_alg = toc;
 disp(['Done. Total time = ', num2str(time_greedy_alg), ' seconds.'])
 disp(' ')
 
+% Note: The equicorrelation set we get from sol_g_p can be used to obtain
+% sol_g_xf by solving A(:,sol_g_eqset)\b;
 
 %% Run 3: Use the dual greedy solution as a ``warm start" for the BP solver
 disp(' ')
@@ -95,6 +97,7 @@ disp(['Total number of NNLS solves: ', num2str(test_count)])
 disp(['Furthermore, norm(sol_test_p-sol_inclBP_p) = ', ...
     num2str(norm(sol_test_p-sol_inclBP_p))])
 disp(' ')
+
 
 %% Set summarize flag to true
 summarize_greedy = true;

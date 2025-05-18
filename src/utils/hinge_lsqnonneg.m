@@ -17,22 +17,21 @@ function [x,d] = hinge_lsqnonneg(A,b,tol)
 %                           (e.g., 1e-08).
 %
 %   Output
-%           x   -   neff-dimemsional col solution vector of nonzero
-%                   coefficients to the NNLS problem, where neff = 
-%                   sum(non-zero components to the NNLS solution).
-%           d   -   m-dimensional col residual vector d = A(:,neff)*x-b
+%           x   -   n-dimemsional solution vector to the NNLS problem.
+%           d   -   m-dimensional residual vector d = A*x-b
 
 
 %% Algorithm: Method of Hinges
 % Invoke the method of hinges with full active set
 [~, n] = size(A);
 eqset = true(n,1);
-u = A\b;
+[u,~] = linsolve(A,b);
 
-% Check if the least-squares solution is feasible
+% Check if the least-squares solution is feasible. If so, we are done.
 if(min(u) >= -tol)
     d = A*u - b;
-    return;    % STOP; the least-squares solution is valid.
+    x = u;
+    return;
 end
 
 % Compute the solution via the method of hinges

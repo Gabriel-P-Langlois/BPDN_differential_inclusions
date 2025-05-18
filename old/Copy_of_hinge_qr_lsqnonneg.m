@@ -1,4 +1,4 @@
-function [x,d,eq_set,Q,R] = ...
+function [u,d,eq_set,Q,R] = ...
     hinge_qr_lsqnonneg(A,Q,R,b,eq_set,opts,tol)
 % HINGE_LSQNONNEG   This function computes the nonnegative LSQ problem
 %                   min_{x>=0} ||A*x-b||_{2}^{2}
@@ -27,8 +27,10 @@ function [x,d,eq_set,Q,R] = ...
 %                           (e.g., 1e-08).
 %
 %   Output
-%           x   -   n-dimemsional solution vector to the NNLS problem.
-%           d   -   m-dimensional col residual vector d = A*x-b
+%           u   -   neff-dimemsional col solution vector of nonzero
+%                   coefficients to the NNLS problem, where neff = 
+%                   sum(non-zero components to the NNLS solution).
+%           d   -   m-dimensional col residual vector d = A(:,neff)*x-b
 %           eq_set      -   Updated equicorrelation set of the BPDN problem
 %                           It is is strictly ``less" than the input.
 %           Q   -   Updated orthogonal matrix from the QR decomposition
@@ -43,18 +45,20 @@ active_set = true(n,1);
 tmp = (b.'*Q).';
 [u,r1] = linsolve(R,tmp,opts);
 
-% Check if the system is singular. If so, avoid solving it with QR.
+% Check if the system is singular. If it is, avoid using QR.
 if(r1 < tol)
+    disp('debug')
     [x,d] = hinge_lsqnonneg(A,b,tol);
     active_set(x==0) = false;
     [Q,R] = qr(A(:,active_set));
+
     ind = find(eq_set);
     eq_set(ind(~active_set)) = 0;
+    u = x(x~=0);
     return;
 end
 
 if(min(u) > -tol)
-    x = u; 
     tmp2 = R*u;
     d = Q*tmp2;
     d = d - b;
@@ -127,9 +131,8 @@ while(true)
     end    
 end
 
-% Prepare the output x, d = A*x - b, and equicorrelation set.
-x = zeros(n,1); x(active_set) = u;
-d = -theta;
+% Update the equicorrelation set and compute its residual d = A*x-b.
 ind = find(eq_set);
 eq_set(ind(~active_set)) = 0;
+d = -theta;
 end

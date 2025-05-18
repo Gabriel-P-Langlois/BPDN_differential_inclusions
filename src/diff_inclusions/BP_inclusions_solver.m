@@ -49,8 +49,7 @@ while(true)
     % Compute the NNLS problem 
     % min_{u>=0} ||K*u - b||_{2}^{2}
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-    [~,d,eq_set,Q,R] = hinge_qr_lsqnonneg(K,Q,R,b,eq_set,opts,tol);    
+    [v,d,eq_set,Q,R] = hinge_qr_lsqnonneg(K,Q,R,b,eq_set,opts,tol);    
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Compute the maximum admissible descent time over the
@@ -76,8 +75,7 @@ while(true)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     if(timestep == inf)
-        u = K\b;
-        sol_x(eq_set) = vec_of_signs(eq_set).*u;
+        sol_x(eq_set) = vec_of_signs(eq_set).*v(v~=0);
         break;
     end
 

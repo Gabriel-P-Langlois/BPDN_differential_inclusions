@@ -1,7 +1,7 @@
-function [sol_x, sol_p, count] = BP_homotopy_solver(A,b,tol)
+function [sol_x, sol_p, sol_t, k] = BPDN_homotopy_solver(A,b,tol)
 % BP_homotopy_solver    Computes the primal and dual solutions of the 
-%                           BP problem \{min_{x \in \Rn} ||x||_1 
-%                               subject to Ax = b \},
+%                           BPND problem \{min_{x \in \Rn} ||x||_1 
+%                               + \frac{1}{2t}normsq{Ax-b} \},
 %                           up to the tolerance level tol, via homotopy
 %                           using the minimal selection principle
 %
@@ -11,21 +11,25 @@ function [sol_x, sol_p, count] = BP_homotopy_solver(A,b,tol)
 %       tol     -   small positive number (e.g., 1e-08)
 %
 %   Output
-%       sol_x   -   Primal solution to BP at hyperparameter t and data
-%                   (A,b) within tolerance level tol. (n,1) array
-%       sol_p   -   Dual solution to BPDN at hyperparamter t and data
-%                   (A,b) within tolerance level tol. (m,1) array
-%       count   -   Number of nonnegative least-squares solved performed.
+%       sol_x   -   (n,k) primal solution to BP at hyperparameter t and data
+%                   (A,b) within tolerance level tol.
+%       sol_p   -   (m,k) dual solutions to BPDN at hyperparameter t and 
+%                   data (A,b) within tolerance level tol.
+%       sol_t   -   (k,1)-dimensional vector of positive numbers t,
+%                   corresponding to the hyperparameters found by homotopy.
+%       k       -   Number of nonnegative least-squares solved performed.
 
 
 %% Initialization
 % Options, placeholders and initial conditions
-[~,n] = size(A);
+[m,n] = size(A);
 tol_minus = 1-tol;
-t = norm(A.'*b,inf);
-sol_x = zeros(n,1);
-sol_p = -b/t;
-Atop_times_p = (sol_p.'*A).';
+kmax = 200*n;   % Upper bound on the max number of hyperparameters.
+
+sol_t = zeros(1,kmax); sol_t(1) = norm(A.'*b,inf);
+sol_x = zeros(n,kmax);
+sol_p = zeros(m,kmax); sol_p(:,1) = -b/sol_t(1);
+Atop_times_p = (sol_p(:,1).'*A).';
 
 % Initialize the equicorrelation set
 eq_set = (abs(Atop_times_p) >= tol_minus);
@@ -35,16 +39,15 @@ vec_of_signs = sign(-Atop_times_p);
 
 
 %% Compute the trajectory of the slow system in a piecewise fashion
-count = 0;
-while(true)
-        count = count + 1;
+k = 1;
+while(k <= kmax)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Compute the NNLS problem 
         % min_{uj>=0 if j \in eq_set and xj = 0} ||K*u + t*sol_p||_{2}^{2}
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        rhs = -t*sol_p;
+        rhs = -sol_t(k)*sol_p(:,k);
         K = A(:,eq_set).*(vec_of_signs(eq_set).');
-        ind = find(sol_x(eq_set) == 0);
+        ind = find(sol_x(eq_set,k) == 0);
         [v,xi] = hinge_mod_lsqnonneg(K,rhs,ind,tol);
 
     
@@ -66,27 +69,29 @@ while(true)
             vec = term4(pos_set)./term1(pos_set);
             timestep = min(vec);
         end
-        tplus = t/(1 + t*timestep);
+        tplus = sol_t(k)/(1 + sol_t(k)*timestep);
 
         % Compute tminus
-        tmp_v = abs(sol_x(eq_set));
+        tmp_v = abs(sol_x(eq_set,k));
         ind_tminus = find(v < -tmp_v);
         if(~isempty(ind_tminus))
-            tminus = t*(1-min(tmp_v(ind_tminus)./abs(v(ind_tminus))));
+            tminus = sol_t(k)*...
+                (1-min(tmp_v(ind_tminus)./abs(v(ind_tminus))));
         else
             tminus = -inf;
         end
 
         % Compute next time
-        told = t;
-        t = max(tminus,tplus);
-        
+        sol_t(k+1) = max(tminus,tplus);
+
     
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Check for convergence
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        if(t == 0)
-            sol_x(eq_set) = sol_x(eq_set) + (vec_of_signs(eq_set).*v);
+        if(sol_t(k+1) == 0)
+            sol_x(eq_set,k+1) = sol_x(eq_set,k) + ...
+                (vec_of_signs(eq_set).*v);
+            sol_p(:,k+1) = sol_p(:,k);
             break;
         end
     
@@ -95,25 +100,37 @@ while(true)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         % Update the primal solution x
-        sol_x(eq_set) = sol_x(eq_set) + ...
-            (1-t/told)*(vec_of_signs(eq_set).*v);
+        sol_x(eq_set,k+1) = sol_x(eq_set,k) + ...
+            (1-sol_t(k+1)/sol_t(k))*(vec_of_signs(eq_set).*v);
 
         % Update the dual solution p, Atop_times_p and vector of signs
-        sol_p = sol_p + (1/t - 1/told)*xi;
-        Atop_times_p = Atop_times_p + (1/t - 1/told)*Atop_times_d;
+        sol_p(:,k+1) = sol_p(:,k) + (1/sol_t(k+1) - 1/sol_t(k))*xi;
+        Atop_times_p = Atop_times_p + ...
+            (1/sol_t(k+1) - 1/sol_t(k))*Atop_times_d;
         vec_of_signs = sign(-Atop_times_p);
 
         % Update the equicorrelation set
-        if(t == tminus)
-            [~,J] = min(abs(sol_x(eq_set)));
+        if(sol_t(k+1) == tminus)
+            [~,J] = min(abs(sol_x(eq_set,k+1)));
             ind = find(eq_set);
             I = ind(J);
             eq_set(I) = 0;
         else
             eq_set = (abs(Atop_times_p) >= tol_minus);   
         end
+        k = k + 1;
+end
+% Error if there was no convergence. Else, clip the output.
+if(k == kmax)
+    disp('Possible error: convergence not achieved')
+else
+    sol_x(:,k+2:end) = [];
+    sol_p(:,k+2:end) = [];
+    sol_t(:,k+2:end) = [];
 end
 end
+
+
 
 
 

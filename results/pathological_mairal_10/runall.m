@@ -37,29 +37,27 @@ disp(['Total number of NNLS solves: ', num2str(bp_count)])
 disp(' ')
 
 
-%% Run 2: Homotopy algorithm (TODO)
+%% Run 2: Homotopy algorithm
+disp(' ')
+disp('Running the BP homotopy solver...')
+tic
+[sol_homoBP_x, sol_homoBP_p, count] = BP_homotopy_solver(A,b,tol);
+time_homotopy_alg = toc;
+disp(['Done. Total time = ', num2str(time_homotopy_alg), ' seconds.'])
+disp(['Total number of NNLS solves: ', num2str(count), '.'])
+disp(' ')
 
 
-
-%% Run 3: Greedy homotopy algorithm via the matroid property
+%% Run 3: Warm start via greedy homotopy algorithm via the matroid property 
 % Note: This computes sol_g_xf and sol_g_eqset such that
 %    A*sol_g_xf(sol_g_eqset) = b
 disp(' ')
-disp('3. Running the greedy algorithm \w thresholding.')
+disp(['3. Running the greedy algorithm \w thresholding and using it ' ...
+    'as a warm-start for the BP solver.'])
 tic
-[sol_g_x, sol_g_p, sol_g_b, sol_g_xf, sol_g_eqset] = ...
+[~, sol_g_p, ~, sol_g_xf, sol_g_eqset] = ...
     greedy_homotopy_threshold(A,b,tol);
-time_greedy_alg = toc;
-disp(['Done. Total time = ', num2str(time_greedy_alg), ' seconds.'])
-disp(' ')
-
-
-%% Run 4: Use the dual greedy solution as a ``warm start" for the BP solver
-disp(' ')
-disp(['4. Running the BP solver using the dual solution' ...
-    ' obtained from the greedy algorithm as a warm start.'])
-tic
-[~,~, warm_count] = ...
+[sol_warm_x,sol_warm_p, warm_count] = ...
     BP_inclusions_solver(A,b,sol_g_p(:,end),tol);
 time_warm = toc;
 disp(['Done. Total time = ', num2str(time_warm), ' seconds.'])
