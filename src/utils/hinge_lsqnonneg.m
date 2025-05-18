@@ -12,9 +12,7 @@ function [x,d] = hinge_lsqnonneg(A,b,tol)
 %
 %   Input
 %           A           -   (m x n)-dimensional design matrix A
-%
 %           b           -   m-dimensional col data vector.
-%
 %           tol         -   small number specifying the tolerance
 %                           (e.g., 1e-08).
 %
@@ -22,7 +20,6 @@ function [x,d] = hinge_lsqnonneg(A,b,tol)
 %           x   -   neff-dimemsional col solution vector of nonzero
 %                   coefficients to the NNLS problem, where neff = 
 %                   sum(non-zero components to the NNLS solution).
-%
 %           d   -   m-dimensional col residual vector d = A(:,neff)*x-b
 
 
