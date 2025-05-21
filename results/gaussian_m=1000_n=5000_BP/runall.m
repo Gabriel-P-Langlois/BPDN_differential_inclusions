@@ -6,12 +6,14 @@
 %                   GLMNET uses a regularization path strategy.
 %                   BPDN use a regularization path strategy.
 %                   A primal-dual method with log barrier is used too.
-
+%
+% Run from the project directory with
+% run ./results/gaussian_m=1000_n=5000_BP/runall.m
 
 %% Initialization
 % Nb of samples and features
-m = 100;
-n = 500;
+m = 1000;
+n = 5000;
 use_fista = false;
 
 % Signal-to-noise ratio, value of nonzero coefficients, and
@@ -23,6 +25,11 @@ prop = 0.05;
 % Tolerance levels
 tol = 1e-08;
 tol_glmnet = 1e-08;
+
+% Spacing for the BPDN solver and GLMNET
+spacing = -0.005;
+max = 0.995;
+min = 0.0;
 
 
 %% Generate data
@@ -37,7 +44,7 @@ x0 = zeros(n,1);
 p0 = -b/t0;
 
 
-%% Solve BPDN using BPDN, GLMNET and, if enabled, FISTA.
+%% Solve using the inclusion solvers,  GLMNET, and an interior method
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Diff. Inclusions: Direct Basis Pursuit Solver
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -55,10 +62,6 @@ disp(' ')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Diff. Inclusions: BPDN with regularization path
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-spacing = -0.005;
-max = 0.995;
-min = 0.0;
 t = t0 * (max:spacing:min);
 kmax = length(t);
 
@@ -73,33 +76,23 @@ disp(['Done. Total time = ', num2str(time_incl_bpdn_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(bpdn_count), '.'])
 disp(' ')
 
-%%%%%%%%%%%%%%%%%%%%
-% GLMNET
-%%%%%%%%%%%%%%%%%%%%
-%   Note 1: The matrix A and response vector b must be rescaled
-%   by a factor of sqrt(m) due to how its implemented.
 
-%   Note 2: The lasso function returns the solutions of the
-%   regularization path starting from its lowest value.
-
-%   Note 3: Unlike the exact lasso algorithm, the dual solution is Ax-b.
-
-sol_glmnet_p = zeros(m,kmax); 
-warning('off');
-time_glmnet_alg = 0;
-
-% Run MATLAB's native lasso solver, flip it, and rescale the dual solution
-disp(['Running the GLMNET algorithm for the BPDN problem' ...
-    ' with regularization path'])
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Run the greedy algorithm and use it as a warm start
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+disp(' ')
+disp('Running the greedy algorithm \w thresholding...')
 tic
-sol_glmnet_x = lasso(sqrt(m)*A,sqrt(m)*b, 'lambda', t, ...
-    'Intercept', false, 'RelTol', tol_glmnet);
-sol_glmnet_x = flip(sol_glmnet_x,2);
-for k=1:1:kmax
-    sol_glmnet_p(:,k) = (A*sol_glmnet_x(:,k)-b)/t(k);
-end
-time_glmnet_alg = time_glmnet_alg + toc;
-disp(['Done. Total time = ', num2str(time_glmnet_alg), ' seconds.'])
+[~, sol_g_p, ~, ~, ~] = ...
+    greedy_homotopy_threshold(A,b,tol);
+%% Run 3: Use the dual greedy solution as a ``warm start" for the BP solver
+disp(['Running the BP solver using the greedy dual solution' ...
+    ' as a warm start.'])
+[~,~, warm_count] = ...
+    BP_inclusions_solver(A,b,sol_g_p(:,end),tol);
+time_warm = toc;
+disp(['Done. Total time = ', num2str(time_warm), ' seconds.'])
+disp(['Total number of NNLS solves (BP solver): ', num2str(warm_count)])
 disp(' ')
 
 

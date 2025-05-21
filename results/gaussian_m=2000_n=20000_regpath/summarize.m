@@ -1,8 +1,8 @@
 %%  summarize script
 %   This script summarizes the results from the runall.m file located for
-%   the gaussian_m=500_n=2500_nregpath_cold runall script.
+%   the gaussian_m=2000_n=4000_regpath runall script.
 
-if(summarize_500_2500_nregpath_cold)
+if(summarize_2000_20000_regpath)
     % Placeholders for comparing the primal solutions
     norm_primal_glmnet_incl = zeros(kmax,1);
     norm_primal_fista_incl = zeros(kmax,1);

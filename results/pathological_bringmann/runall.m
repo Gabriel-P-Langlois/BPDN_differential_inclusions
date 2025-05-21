@@ -1,4 +1,7 @@
 %% runall script
+% Run from the project directory with
+% run ./results/pathological_bringmann/runall.m
+
 
 %% CASE 2: Bringmann's example
 % Tolerance levels
@@ -169,15 +172,15 @@ norm_dual_diff = zeros(l,1);
 norm_primal_glmnet_bpdn = zeros(l,1);
 norm_dual_glmnet_bpdn = zeros(l,1);
 
-for i=1:1:l
-    norm_primal_diff(l) = norm(sol_incl2_x(:,l) - sol_hBPDN2_x(:,l),2)/...
-        norm(sol_incl2_x(:,l));
-    norm_dual_diff(l) = norm(sol_incl2_p(:,l) - sol_hBPDN2_p(:,l),2)/...
-        norm(sol_incl2_p(:,l));
-    norm_primal_glmnet_bpdn(l) = norm(sol_incl2_x(:,l) - sol_glmnet2_x(:,l),2)/...
-        norm(sol_incl2_x(:,l));
-    norm_dual_glmnet_bpdn(l) = norm(sol_incl2_p(:,l) - sol_glmnet2_p(:,l),2)/...
-        norm(sol_incl2_p(:,l));
+for i=2:1:l
+    norm_primal_diff(i) = norm(sol_incl2_x(:,i) - sol_hBPDN2_x(:,i),2)/...
+        norm(sol_incl2_x(:,i));
+    norm_dual_diff(i) = norm(sol_incl2_p(:,i) - sol_hBPDN2_p(:,i),2)/...
+        norm(sol_incl2_p(:,i));
+    norm_primal_glmnet_bpdn(i) = norm(sol_incl2_x(:,i) - sol_glmnet2_x(:,i),2)/...
+        norm(sol_incl2_x(:,i));
+    norm_dual_glmnet_bpdn(i) = norm(sol_incl2_p(:,i) - sol_glmnet2_p(:,i),2)/...
+        norm(sol_incl2_p(:,i));
 end
 
 disp('Sum of relative norms between homotopy and BPDN solvers')

@@ -44,8 +44,14 @@ while(true)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         rhs = -t*sol_p;
         K = A(:,eq_set).*(vec_of_signs(eq_set).');
-        ind = find(sol_x(eq_set) == 0);
-        [v,xi] = hinge_mod_lsqnonneg(K,rhs,ind,tol);
+        ind = find(abs(sol_x(eq_set)) < tol);
+
+        if(isempty(ind))
+            v = K\rhs;
+            xi = K*v - rhs;
+        else
+            [v,xi] = hinge_for_homotopy(K,rhs,ind,tol);
+        end
 
     
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -104,83 +110,6 @@ while(true)
         vec_of_signs = sign(-Atop_times_p);
 
         % Update the equicorrelation set
-        if(t == tminus)
-            [~,J] = min(abs(sol_x(eq_set)));
-            ind = find(eq_set);
-            I = ind(J);
-            eq_set(I) = 0;
-        else
-            eq_set = (abs(Atop_times_p) >= tol_minus);   
-        end
+        eq_set = (abs(Atop_times_p) >= tol_minus);   
 end
-end
-
-
-
-function [x,d] = hinge_mod_lsqnonneg(A,b,ind,tol)
-% HINGE_MOD_LSQNONNEG   This function computes the nonnegative LSQ problem
-%                       min_{x \in \Rn} ||A*x-b||_{2}^{2}
-%                       subject to xj >= 0 if j \in ind 
-%                       using the ``Method of Hinges" presented in
-%                       ``A Simple New Algorithm for Quadratic Programming 
-%                       with Applications in Statistics" by Mary C. Meyers.
-%
-%
-%   Input
-%           A           -   (m x l)-dimensional design matrix A
-%           b           -   m-dimensional col data vector.
-%           ind         -   ind \coloneqq \subset {1,...l}
-%           tol         -   small number specifying the tolerance
-%                           (e.g., 1e-08).
-%
-%   Output
-%           x   -   l-dimensional col solution vector of nonzero
-%                   coefficients to the NNLS problem.
-%           d   -   m-dimensional col residual vector d = A*x - b
-
-
-%% Algorithm: Method of Hinges
-% Invoke the method of hinges with full active set
-[~, l] = size(A);
-eqset = true(l,1);
-[u,~] = linsolve(A,b);
-
-% Check if the least-squares solution is feasible. If so, stop.
-if(min(u(ind)) >= tol)
-    d = A*u - b;
-    x = zeros(l,1);
-    x(eqset) = u;
-    return;
-end
-
-% Compute the solution via the method of hinges
-while(true)
-    if(min(u(ind)) < -tol)       % Check if the primal constraint is violated.
-        x = zeros(l,1);
-        x(eqset) = u;
-        [~,J] = min(x(ind));
-        I = ind(J);
-        eqset(I) = false;
-    else                    % Check if the dual constraint is violated.
-        theta = A(:,eqset)*u;
-        rho = b - theta;
-        tmp = rho.'*A;
-        [val,J] = max(tmp(ind));
-        I = ind(J);
-
-        if(val > tol)
-            eqset(I) = true;
-        else
-            break;          % STOP; all constraints are satisfied.
-        end
-    end
-
-    % Compute the solution to A(:,eqset)*u = b and continue.
-    u = A(:,eqset)\b;
-end
-
-% Return the solution vector x and the residual d = A*x-b
-x = zeros(l,1);
-x(eqset) = u;
-d = -rho;
 end

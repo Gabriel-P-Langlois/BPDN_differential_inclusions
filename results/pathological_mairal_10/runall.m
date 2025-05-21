@@ -1,6 +1,6 @@
 %% runall script
 % Invoke this script from the main directory by calling
-%     run ./results/gaussian_greedy/runall.m
+%     run ./results/pathological_mairal_10/runall.m
 
 
 %% Initialization

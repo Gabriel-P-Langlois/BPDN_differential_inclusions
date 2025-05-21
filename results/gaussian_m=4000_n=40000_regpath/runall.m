@@ -5,15 +5,19 @@
 %   If enabled, the fista solver is also used.
 %
 %   Specifications: Gaussian data \w fixed grid.
-%                   GLMNET and FISTA use a regularization path strategy.
+%                   GLMNET uses a regularization path strategy.
 %                   BPDN_inclusions uses a highly optimized regularization
 %                   path strategy.
 
+% Run from the project directory with
+% run ./results/gaussian_m=4000_n=40000_regpath/runall.m
+%
+% Note: This will take a while.
 
 %% Initialization
 % Nb of samples and features
-m = 1000;
-n = 100000;
+m = 4000;
+n = 40000;
 
 % Signal-to-noise ratio, value of nonzero coefficients, and
 % proportion of nonzero coefficients in the signal.
@@ -55,9 +59,10 @@ kmax = length(t);
 
 disp('Running the differential inclusions algorithm for the BPDN problem...')
 tic
-[sol_incl_x,sol_incl_p,~] = BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
+[sol_incl_x,sol_incl_p,count] = BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
 time_incl_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
+disp(['Total number of NNLS solves: ', num2str(count), '.'])
 disp(' ')
 
 
@@ -91,4 +96,4 @@ disp(' ')
 
 
 % Set summarize flag to true
-summarize_1000_100000_regpath = true;
+summarize_4000_40000_regpath = true;
