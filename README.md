@@ -11,10 +11,4 @@
     GPL will add some comments later to describe what these inputs are, but it should
     be clear from the runall.m files what they do.
 
-%%% Some notes %%%
-(29/07/2024) There's a lot of work that was done to get to that point...
-  A few remarks:
-    - The tolerance for the exact BPDN algorithm should not be too small; 
-      I set it to 1e-08 and everything was fine, even in the high-dimensional example.
-
-    -  TBC (Note about the calculation of the descent direction)
+4)  TODO: Discuss the Sparco data...

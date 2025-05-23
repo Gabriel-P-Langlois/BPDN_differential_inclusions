@@ -37,13 +37,15 @@ function [x,d,eq_set,Q,R] = ...
 
 
 %% Algorithm: Method of Hinges (with initial full active set)
-% Compute the least squares solution. If positive, then return.
+% Initialize and compute the LSQ solution.
 [~, n] = size(A);
 active_set = true(n,1);
-tmp = (b.'*Q).';
+tmp = Q.'*b;
 [u,r1] = linsolve(R,tmp,opts);
 
+
 % Check if the system is singular. If so, avoid solving it with QR.
+% If not, check if the LSQ solution is admissible.
 if(r1 < tol)
     [x,d] = hinge_lsqnonneg(A,b,tol);
     active_set(x==0) = false;
@@ -51,23 +53,20 @@ if(r1 < tol)
     ind = find(eq_set);
     eq_set(ind(~active_set)) = 0;
     return;
-end
-
-if(min(u) > -tol)
+elseif(min(u) > -tol)
     x = u; 
-    tmp2 = R*u;
-    d = Q*tmp2;
-    d = d - b;
+    d = A*x-b;
     return
 end
 
-% Compute the NNLS solutions via the Meyers' Method of Hinges.
+
+% Compute the NNLS solutions via Meyers' Method of Hinges.
 while(true)
     remove_update = false;
     insert_update = false;
 
-    % Check if the primal constraint is violated. If not, compute the
-    % residual b - A*u.
+    % Check if the primal constraint is violated. If so, mark
+    % the violating element. Else, compute the residual b - A*u.
     if(min(u) <= -tol)  
         x = zeros(n,1); 
         x(active_set) = u;
@@ -81,7 +80,7 @@ while(true)
         Atop_times_rho = (theta.'*A);
         [val,I] = max(Atop_times_rho);
 
-        % Check if the dual constraint holds. If so, exit. Otherwise,
+        % Check if the dual constraint holds. If so, EXIT. Otherwise,
         % mark the corresponding columns to be added to the active set.
         if(val < tol)
             break;
@@ -90,6 +89,7 @@ while(true)
             insert_update = isscalar(I);
         end
     end
+
 
     % Update the QR decomposition.
     if(remove_update)
@@ -114,7 +114,7 @@ while(true)
     end
 
     % Compute LSQ solution to Au = b with the QR decomposition A=Q*R.
-    tmp = (b.'*Q).';
+    tmp = Q.'*b;
     [u,r2] = linsolve(R,tmp,opts);
 
     % Check if the linsolve is singular; recompute QR decomposition if so.

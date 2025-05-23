@@ -1,5 +1,6 @@
-function [sol_x, sol_p, sol_b, sol_xf, sol_eqset] = greedy_homotopy_threshold(A,b,tol)
-% GREEDY_HOMOTOPY_THRESHOLD Computes a feasible point of the linear system
+function [sol_x, sol_p, sol_b, sol_xf, sol_eqset] = ...
+    greedy_homotopy_threshold_s(A,b,tol)
+% GREEDY_S_HOMOTOPY_THRESHOLD Computes a feasible point of the linear system
 %                           Ax=b using a greedy algorithm inspired by
 %                           the basis pursuit problem.
 %
@@ -7,7 +8,7 @@ function [sol_x, sol_p, sol_b, sol_xf, sol_eqset] = greedy_homotopy_threshold(A,
 %                           as the selection criterion.
 %
 %   Input
-%       A       -   m by n design matrix of the BPDN problem
+%       A       -   m by n * sparse *design matrix of the BPDN problem
 %       b       -   m dimensional col data vector of the BPDN problem
 %       tol     -   small positive number (e.g., 1e-08)
 %
@@ -26,7 +27,9 @@ function [sol_x, sol_p, sol_b, sol_xf, sol_eqset] = greedy_homotopy_threshold(A,
 %       sol_eqset   -   An (n,1)-dimensional boolean vector corresponding
 %                       to the active set of sol_xf. So, sol_eqset(j) = 1
 %                       means sol_xf(j) =/= 0.                       
-
+%
+%       Note: This is not very useful, unfortunately... using a direct
+%             solver after enough iterations is difficult.
 
 %% Initialization
 [m,n] = size(A);
@@ -49,17 +52,12 @@ eq_set = (abs(Atop_times_p) >= tol_minus);
 vec_of_signs = sign(-Atop_times_p);
 K = A(:,eq_set).*(vec_of_signs(eq_set).');
 
-% Perform the initial QR decomposition and set the opts field
-[Q,R] = qr(K);
-opts.UT = true;
-
 
 %% Greedy algorithm
 for k=1:1:m
     % Compute the LSQ problem min_{u} ||K*v + t*sol_p||_{2}^{2}
     rhs = -sol_t(k)*sol_p;
-    tmp = (rhs.'*Q).';
-    v = linsolve(R,tmp,opts);
+    v = K\rhs;
 
     % Compute the descent direction.
     xi = K*v - rhs;
@@ -132,27 +130,10 @@ for k=1:1:m
     vec_of_signs = sign(-Atop_times_p);
 
     % Update the equicorrelation set and assemble the effective matrix.
-    new_eq_set = (abs(Atop_times_p) >= tol_minus);
-    ind = setxor(find(eq_set),find(new_eq_set));
-
-    eq_set = new_eq_set;
+    eq_set = (abs(Atop_times_p) >= tol_minus);
     K = A(:,eq_set).*(vec_of_signs(eq_set).');
 
-    % Update the QR decomposition if one column is added.
-    % Else, recompute the QR decomposition from scratch.
-    if(isscalar(ind))
-        % Extract new element added to eq_set and its column.
-        col = A(:,ind).*(vec_of_signs(ind).');
-        loc = find(find(eq_set) == ind);
-
-        % Execute [Q,R] = qrinsert(Q,R,loc,col) without overhead.
-        [~,nr] = size(R);
-        R(:,loc+1:nr+1) = R(:,loc:nr);
-        R(:,loc) = (col.'*Q).';
-        [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
-    else
-        [Q,R] = qr(K);
-    end
+    disp([k,norm(A*(sol_x - sol_y)-b,2)])
 end
 
 % Compute the feasible point and its active set

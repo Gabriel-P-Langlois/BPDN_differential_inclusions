@@ -10,12 +10,12 @@
 %                   path strategy.
 
 % Run from the project directory with
-% run ./results/gaussian_m=2000_n=20000_regpath/runall.m
+% run ./results/gaussian_m=2000_n=4000_regpath/runall.m
 
 %% Initialization
 % Nb of samples and features
 m = 2000;
-n = 20000;
+n = 4000;
 use_fista = false;
 
 % Signal-to-noise ratio, value of nonzero coefficients, and
@@ -29,9 +29,10 @@ tol = 1e-08;
 tol_glmnet = 1e-08;
 tol_fista = tol;
 
+
 % Grid of hyperparameters
-spacing = -0.01;
-max = 0.99;
+spacing = -0.005;
+max = 0.995;
 min = 0.0;
 
 
@@ -55,12 +56,14 @@ kmax = length(t);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Diff. Inclusions: BPDN
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 disp('Running the differential inclusions algorithm for the BPDN problem...')
 tic
-[sol_incl_x,sol_incl_p, ~] = BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
+[sol_incl_x,sol_incl_p, count] = ...
+    BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
 time_incl_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
+disp(['Total number of NNLS solves: ', num2str(count), '.'])
+disp(' ')
 
 
 %%%%%%%%%%%%%%%%%%%%

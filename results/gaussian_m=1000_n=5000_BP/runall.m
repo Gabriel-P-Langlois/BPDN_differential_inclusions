@@ -27,8 +27,8 @@ tol = 1e-08;
 tol_glmnet = 1e-08;
 
 % Spacing for the BPDN solver and GLMNET
-spacing = -0.005;
-max = 0.995;
+spacing = -0.01;
+max = 0.99;
 min = 0.0;
 
 
@@ -85,7 +85,6 @@ disp('Running the greedy algorithm \w thresholding...')
 tic
 [~, sol_g_p, ~, ~, ~] = ...
     greedy_homotopy_threshold(A,b,tol);
-%% Run 3: Use the dual greedy solution as a ``warm start" for the BP solver
 disp(['Running the BP solver using the greedy dual solution' ...
     ' as a warm start.'])
 [~,~, warm_count] = ...

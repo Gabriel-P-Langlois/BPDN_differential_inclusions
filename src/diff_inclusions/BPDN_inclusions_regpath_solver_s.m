@@ -1,6 +1,6 @@
 function [sol_x, sol_p, count] = ...
-    BPDN_inclusions_regpath_solver(A,b,p0,t,tol)
-% BPDN_inclusions_regpath_solver    Computes the primal and dual solutions 
+    BPDN_inclusions_regpath_solver_s(A,b,p0,t,tol)
+% BPDN_inclusions_s_regpath_solver Computes the primal and dual solutions 
 %                           of the BPDN problem \{min_{x \in \Rn} 
 %                               \frac{1}{2t}\normsq{Ax-b} + ||x||_1 \},
 %                           up to the tolerance level tol, using
@@ -58,11 +58,6 @@ eq_set = (abs(Atop_times_p) >= tol_minus);
 vec_of_signs = sign(-Atop_times_p);
 K = A(:,eq_set).*(vec_of_signs(eq_set).');
 
-% Perform the initial QR decomposition and set the opts field.
-[Q,R] = qr(K);
-opts.UT = true;
-
-
 %% Regularization path
 count = 0;
 for k=1:1:kmax  
@@ -75,7 +70,7 @@ for k=1:1:kmax
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         rhs = b + t(k)*sol_p(:,k);
-        [u,d,eq_set,Q,R] = hinge_qr_lsqnonneg(K,Q,R,rhs,eq_set,opts,tol);
+        [u,d] = hinge_lsqnonneg_s(K,rhs,tol);
  
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Compute the maximum admissible descent time over the
@@ -102,17 +97,17 @@ for k=1:1:kmax
 
         if(timestep == inf)
             if(t(k) > 0)
-                sol_x(eq_set,k) = vec_of_signs(eq_set).*u(u~=0);
+                sol_x(eq_set,k) = vec_of_signs(eq_set).*u;
                 sol_p(:,k) = sol_p(:,k) + d/t(k);
                 Atop_times_p = Atop_times_p + Atop_times_d/t(k);
                 vec_of_signs = sign(-Atop_times_p);
             else
-                sol_x(eq_set,k) = vec_of_signs(eq_set).*u(u~=0);
+                sol_x(eq_set,k) = vec_of_signs(eq_set).*u;
             end
             break;
             
         elseif(t(k) > 0 && timestep*t(k) > tol_minus)
-            sol_x(eq_set,k) = vec_of_signs(eq_set).*u(u~=0);
+            sol_x(eq_set,k) = vec_of_signs(eq_set).*u;
             sol_p(:,k) = sol_p(:,k) + d/t(k);
             Atop_times_p = Atop_times_p + timestep*Atop_times_d;
             vec_of_signs = sign(-Atop_times_p);
@@ -128,29 +123,9 @@ for k=1:1:kmax
         Atop_times_p = Atop_times_p + timestep*Atop_times_d;
         vec_of_signs = sign(-Atop_times_p);
     
-        
         % Update the equicorrelation set and assemble the effective matrix.
-        new_eq_set = (abs(Atop_times_p) >= tol_minus); 
-        ind = setxor(find(eq_set),find(new_eq_set));
-        eq_set = new_eq_set;        
+        eq_set = (abs(Atop_times_p) >= tol_minus);        
         K = A(:,eq_set).*(vec_of_signs(eq_set).');
-        
-
-        % Update the QR decomposition if one column is added.
-        % Else, recompute the QR decomposition from scratch.
-        if(isscalar(ind))
-            % Extract new element added to eq_set and its column.
-            col = A(:,ind).*(vec_of_signs(ind).');
-            loc = find(find(eq_set) == ind);
-    
-            % Execute [Q,R] = qrinsert(Q,R,loc,col) without overhead.
-            [~,nr] = size(R);
-            R(:,loc+1:nr+1) = R(:,loc:nr);
-            R(:,loc) = (col.'*Q).';
-            [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
-        else
-            [Q,R] = qr(K);
-        end
     end
 
 
@@ -162,22 +137,6 @@ for k=1:1:kmax
         ind = setxor(find(eq_set),find(new_eq_set));
         eq_set = new_eq_set;        
         K = A(:,eq_set).*(vec_of_signs(eq_set).');
-
-        % Update the QR decomposition if one column is added.
-        % Else, recompute the QR decomposition from scratch.
-        if(isscalar(ind))
-            % Extract new element added to eq_set and its column.
-            col = A(:,ind).*(vec_of_signs(ind).');
-            loc = find(find(eq_set) == ind);
-
-            % Execute [Q,R] = qrinsert(Q,R,loc,col) without overhead.
-            [~,nr] = size(R);
-            R(:,loc+1:nr+1) = R(:,loc:nr);
-            R(:,loc) = (col.'*Q).';
-            [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
-        else
-            [Q,R] = qr(K);
-        end
     end
 end
 
