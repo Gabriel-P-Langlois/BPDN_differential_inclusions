@@ -6,10 +6,11 @@
 %% CASE 1: Gaussian data
 % Tolerance levels
 tol = 1e-08;
+tol_glmnet = 1e-04;    % Default is 1e-04
 
 % Nb of samples and features
-m = 100;
-n = 500;
+m = 500;
+n = 1000;
 
 % Signal-to-noise ratio, value of nonzero coefficients, and
 % proportion of nonzero coefficients in the signal.
@@ -38,19 +39,6 @@ tic
 time_incl_BP_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_BP_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(BP_count), '.'])
-disp(' ')
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Diff. Inclusions: Homotopy for BP
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-disp(' ')
-disp('Running the BP homotopy solver...')
-tic
-[sol_hBP_x, sol_hBP_p, count] = BP_homotopy_solver(A,b,tol);
-time_homotopy_alg = toc;
-disp(['Done. Total time = ', num2str(time_homotopy_alg), ' seconds.'])
-disp(['Total number of NNLS solves: ', num2str(count), '.'])
 disp(' ')
 
 
@@ -102,7 +90,7 @@ warning('off');
 disp('Running the GLMNET algorithm for the BPDN problem...')
 tic
 sol_glmnet_x = lasso(sqrt(m)*A,sqrt(m)*b, 'lambda', sol_hBPDN_t, ...
-    'Intercept', false, 'RelTol', tol);
+    'Intercept', false, 'RelTol', tol_glmnet);
 sol_glmnet_x = flip(sol_glmnet_x,2);
 for k=1:1:l
     sol_glmnet_p(:,k) = (A*sol_glmnet_x(:,k)-b)/sol_hBPDN_t(k);
@@ -115,18 +103,21 @@ disp(' ')
 
 %% Summarize some results
 disp('Differences between basis pursuit solutions (primal/dual)...')
-disp(norm(sol_inclBP_x-sol_hBP_x))
-disp(norm(sol_inclBP_p-sol_hBP_p))
-disp(norm(sol_inclBP_x-sol_hBPDN_x(:,end)))
-disp(norm(sol_inclBP_p-sol_hBPDN_p(:,end)))
+disp(['norm(xBP-xhBPDN) = ', num2str(norm(sol_inclBP_x-sol_hBPDN_x(:,end)))])
+disp(['norm(pBP-phBPDN) = ', num2str(norm(sol_inclBP_p-sol_hBPDN_p(:,end)))])
 
 % Calculate difference between homotopy solution and the BPDN solver
 disp(' ')
 disp('Calculate deviation between homotopy/BPDN solver solutions...')
 norm_primal_diff = zeros(l,1);
 norm_dual_diff = zeros(l,1);
+
 norm_primal_glmnet_bpdn = zeros(l,1);
 norm_dual_glmnet_bpdn = zeros(l,1);
+
+norm_primal_glmnet_hBPDN = zeros(l,1);
+norm_dual_glmnet_hBPDN = zeros(l,1);
+
 
 
 for i=2:1:l
@@ -134,10 +125,16 @@ for i=2:1:l
         norm(sol_incl_x(:,i));
     norm_dual_diff(i) = norm(sol_incl_p(:,i) - sol_hBPDN_p(:,i),2)/...
         norm(sol_incl_p(:,i));
+
     norm_primal_glmnet_bpdn(i) = norm(sol_incl_x(:,i) - sol_glmnet_x(:,i),2)/...
         norm(sol_incl_x(:,i));
     norm_dual_glmnet_bpdn(i) = norm(sol_incl_p(:,i) - sol_glmnet_p(:,i),2)/...
         norm(sol_incl_p(:,i));
+
+    norm_primal_glmnet_hBPDN(i) = norm(sol_hBPDN_x(:,i) - sol_glmnet_x(:,i),2)/...
+        norm(sol_hBPDN_x(:,i));
+    norm_dual_glmnet_hBPDN(i) = norm(sol_hBPDN_p(:,i) - sol_glmnet_p(:,i),2)/...
+        norm(sol_hBPDN_p(:,i));
 end
 
 disp('Sum of relative norms between homotopy and BPDN solvers')
@@ -150,4 +147,10 @@ disp('Sum of relative norms between glmnet and BPDN solvers (except t=0)')
 disp(' ')
 disp(sum(norm_primal_glmnet_bpdn(1:end-1)))
 disp(sum(norm_dual_glmnet_bpdn(1:end-1)))
+disp(' ')
+
+disp('Sum of relative norms between glmnet and hBPDN solvers (except t=0)')
+disp(' ')
+disp(sum(norm_primal_glmnet_hBPDN(1:end-1)))
+disp(sum(norm_dual_glmnet_hBPDN(1:end-1)))
 disp(' ')

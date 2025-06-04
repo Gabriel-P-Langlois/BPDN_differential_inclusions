@@ -16,8 +16,8 @@
 
 %% Initialization
 % Nb of samples and features
-m = 4000;
-n = 40000;
+m = 1000;
+n = 10000;
 
 % Signal-to-noise ratio, value of nonzero coefficients, and
 % proportion of nonzero coefficients in the signal.

@@ -49,14 +49,8 @@ while(k <= kmax)
         K = A(:,eq_set).*(vec_of_signs(eq_set).');
         ind = find(abs(sol_x(eq_set,k)) < tol);
 
-        if(isempty(ind))
-            v = K\rhs;
-            xi = K*v - rhs;
-        else
-            [v,xi] = hinge_for_homotopy(K,rhs,ind,tol);
-        end
+        [v,xi] = hinge_for_homotopy(K,rhs,ind,tol);
 
-    
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Compute tplus and tminus
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -89,11 +83,6 @@ while(k <= kmax)
 
         % Compute next time
         sol_t(k+1) = max(tminus,tplus);
-        
-        % % Tests...
-        % if (sol_t(k+1) == tminus)
-        %     disp(tminus)
-        % end
     
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Check for convergence

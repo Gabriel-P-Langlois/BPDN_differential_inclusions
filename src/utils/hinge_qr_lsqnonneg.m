@@ -1,10 +1,10 @@
 function [x,d,eq_set,Q,R] = ...
     hinge_qr_lsqnonneg(A,Q,R,b,eq_set,opts,tol)
-% HINGE_LSQNONNEG   This function computes the nonnegative LSQ problem
-%                   min_{x>=0} ||A*x-b||_{2}^{2}
-%                   using the ``Method of Hinges" presented in
-%                   ``A Simple New Algorithm for Quadratic Programming 
-%                   with Applications in Statistics" by Mary C. Meyers.
+% HINGE_QR_LSQNONNEG   This function computes the nonnegative LSQ problem
+%                       min_{x>=0} ||A*x-b||_{2}^{2}
+%                       using the ``Method of Hinges" presented in
+%                       ``A Simple New Algorithm for Quadratic Programming 
+%                       with Applications in Statistics" by Mary C. Meyers.
 %
 %                   This version of the Method of Hinges starts with the
 %                   with the full active set. This requires first computing
@@ -36,31 +36,38 @@ function [x,d,eq_set,Q,R] = ...
 %                   decomposition
 
 
-%% Algorithm: Method of Hinges (with initial full active set)
-% Initialize and compute the LSQ solution.
+%% Initialization
 [~, n] = size(A);
 active_set = true(n,1);
 tmp = Q.'*b;
-[u,r1] = linsolve(R,tmp,opts);
 
 
-% Check if the system is singular. If so, avoid solving it with QR.
-% If not, check if the LSQ solution is admissible.
-if(r1 < tol)
-    [x,d] = hinge_lsqnonneg(A,b,tol);
-    active_set(x==0) = false;
-    [Q,R] = qr(A(:,active_set));
-    ind = find(eq_set);
-    eq_set(ind(~active_set)) = 0;
-    return;
-elseif(min(u) > -tol)
+%% Check if the LSQ is admissible and identify potential issues
+if(~issparse(A))
+    [u,r1] = linsolve(R,tmp,opts);
+    
+    % Check if the system is singular. If so, avoid solving it with QR.
+    if(r1 < tol)
+        [x,d] = hinge_lsqnonneg(A,b,tol);
+        active_set(x==0) = false;
+        [Q,R] = qr(A(:,active_set));
+        ind = find(eq_set);
+        eq_set(ind(~active_set)) = 0;
+        return;
+    end
+else
+    u = R\tmp;
+end
+
+% Check if the LSQ solution is admissible.
+if(min(u) > -tol)
     x = u; 
     d = A*x-b;
     return
 end
 
 
-% Compute the NNLS solutions via Meyers' Method of Hinges.
+%% Compute the NNLS solutions via Meyers algorithm
 while(true)
     remove_update = false;
     insert_update = false;
@@ -90,44 +97,38 @@ while(true)
         end
     end
 
-
     % Update the QR decomposition.
     if(remove_update)
-        % Execute [Q,R] = qrdelete(Q,R,J) without overhead.
         [~, J] = min(u);
-        R(:,J) = [];
-        [Q,R] = matlab.internal.math.deleteCol(Q,R,J);
+        [Q,R] = qrdelete(Q,R,J);
     elseif(insert_update)
-        % Extract new element added to the active set and its column.
+        % Extract the new element added to the active set and its column.
         [~, J] = max(Atop_times_rho);
         col = A(:,J);
         loc = find(find(active_set) == J);
-        
-        % Execute [Q,R] = qrinsert(Q,R,loc,col) without overhead.
-        [~,nr] = size(R);
-        R(:,loc+1:nr+1) = R(:,loc:nr);
-        R(:,loc) = (col.'*Q).';
-        [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
+        [Q,R] = qrinsert(Q,R,loc,col);
     else
         % Multiple column deletes or inserts not supported.
         [Q,R] = qr(A(:,active_set));
     end
-
+    
     % Compute LSQ solution to Au = b with the QR decomposition A=Q*R.
     tmp = Q.'*b;
-    [u,r2] = linsolve(R,tmp,opts);
-
-    % Check if the linsolve is singular; recompute QR decomposition if so.
-    if(r2 < tol)
-        disp("Warning: Linear system is nearly singular." + ...
-            " Recomputing QR decomposition...")
-        [Q,R] = qr(A(:,active_set));
-        tmp = (b.'*Q).';
-        u = linsolve(R,tmp,opts);
-    end    
+    if(~issparse(A))
+        [u,r2] = linsolve(R,tmp,opts);
+        % Check if linsolve is singular; recompute QR decomposition if so.
+        if(r2 < tol)
+            disp("Warning: Linear system is nearly singular." + ...
+                " Recomputing QR decomposition...")
+            [Q,R] = qr(A(:,active_set));
+            tmp = (b.'*Q).';
+            u = R\tmp;
+        end    
+    else
+        u = R\tmp;
+    end
 end
 
-% Prepare the output x, d = A*x - b, and equicorrelation set.
 x = zeros(n,1); x(active_set) = u;
 d = -theta;
 ind = find(eq_set);

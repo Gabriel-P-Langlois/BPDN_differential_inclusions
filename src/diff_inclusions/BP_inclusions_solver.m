@@ -100,12 +100,8 @@ while(true)
         % Extract new element added to eq_set and its column.
         col = A(:,ind).*(vec_of_signs(ind).');
         loc = find(find(eq_set) == ind);
-
-        % Execute [Q,R] = qrinsert(Q,R,loc,col) without overhead.
-        [~,nr] = size(R);
-        R(:,loc+1:nr+1) = R(:,loc:nr);
-        R(:,loc) = (col.'*Q).';
-        [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
+        
+        [Q,R] = qrinsert(Q,R,loc,col);
     else
         [Q,R] = qr(K);  % Multiple column updates not supported
     end

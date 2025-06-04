@@ -34,13 +34,13 @@ x(eqset) = u;
 d = A*u - b;
 
 % Check if the LSQ solution is feasible. If so, stop -- it is optimal.
-if(min(u(ind)) >= tol)
+if(isempty(ind) || min(u(ind)) > tol)
     return;
 end
 
 % Compute the solution via the method of hinges
 while(true)
-    if(min(x(ind)) < -tol)       % Check if the primal constraint is violated.
+    if(min(x(ind)) < -tol)  % Check if the primal constraint is violated.
         [~,J] = min(x(ind));
         I = ind(J);
         eqset(I) = false;
@@ -53,7 +53,7 @@ while(true)
         if(val > tol)
             eqset(I) = true;
         else
-            break;          % STOP; all constraints are satisfied.
+            break;
         end
     end
 

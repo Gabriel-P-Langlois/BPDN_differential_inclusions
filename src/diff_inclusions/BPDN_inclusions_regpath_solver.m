@@ -114,7 +114,7 @@ for k=1:1:kmax
         elseif(t(k) > 0 && timestep*t(k) > tol_minus)
             sol_x(eq_set,k) = vec_of_signs(eq_set).*u(u~=0);
             sol_p(:,k) = sol_p(:,k) + d/t(k);
-            Atop_times_p = Atop_times_p + timestep*Atop_times_d;
+            Atop_times_p = Atop_times_p + Atop_times_d/t(k);
             vec_of_signs = sign(-Atop_times_p);
             break;
         end
@@ -142,12 +142,8 @@ for k=1:1:kmax
             % Extract new element added to eq_set and its column.
             col = A(:,ind).*(vec_of_signs(ind).');
             loc = find(find(eq_set) == ind);
-    
-            % Execute [Q,R] = qrinsert(Q,R,loc,col) without overhead.
-            [~,nr] = size(R);
-            R(:,loc+1:nr+1) = R(:,loc:nr);
-            R(:,loc) = (col.'*Q).';
-            [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
+            
+            [Q,R] = qrinsert(Q,R,loc,col);
         else
             [Q,R] = qr(K);
         end
@@ -170,11 +166,7 @@ for k=1:1:kmax
             col = A(:,ind).*(vec_of_signs(ind).');
             loc = find(find(eq_set) == ind);
 
-            % Execute [Q,R] = qrinsert(Q,R,loc,col) without overhead.
-            [~,nr] = size(R);
-            R(:,loc+1:nr+1) = R(:,loc:nr);
-            R(:,loc) = (col.'*Q).';
-            [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
+            [Q,R] = qrinsert(Q,R,loc,col);
         else
             [Q,R] = qr(K);
         end
