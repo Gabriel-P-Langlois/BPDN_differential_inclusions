@@ -144,7 +144,7 @@ for k=1:1:m
 
     % Update the QR decomposition if one column is added.
     % Else, recompute the QR decomposition from scratch.
-    if(isscalar(ind))
+    if(isscalar(ind) && ~issparse(A))
         % Extract new element added to eq_set and its column.
         col = A(:,ind).*(vec_of_signs(ind).');
         loc = find(find(eq_set) == ind);

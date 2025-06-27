@@ -1,4 +1,4 @@
-function [x,d,eq_set,Q,R] = ...
+function [x,d,eq_set,Q,R,num_linsolve] = ...
     hinge_qr_lsqnonneg(A,Q,R,b,eq_set,opts,tol)
 % HINGE_QR_LSQNONNEG   This function computes the nonnegative LSQ problem
 %                       min_{x>=0} ||A*x-b||_{2}^{2}
@@ -7,9 +7,9 @@ function [x,d,eq_set,Q,R] = ...
 %                       with Applications in Statistics" by Mary C. Meyers.
 %
 %                   This version of the Method of Hinges starts with the
-%                   with the full active set. This requires first computing
-%                   the least-squares solution u = (A.'*A)^{-1}(A.'*b),
-%                   which is given as input to this algorithm.
+%                   with the full active set and maintains the QR
+%                   decomposition of A as we remove elements from the
+%                   active set or add elements to the active set.
 %
 %   Input
 %           A           -   (m x n)-dimensional design matrix A
@@ -22,6 +22,8 @@ function [x,d,eq_set,Q,R] = ...
 %                           min_{x \in \Rn} ||Ax - b||_{2}^{2}.
 %           b           -   m-dimensional col data vector.
 %           eq_set      -   equicorrelation set of the BPDN problem
+%                           NOTE: Used to improve performance, not actually
+%                           recompute the equicorrelation set.
 %           opts        -   opts field for the linsolve function.
 %           tol         -   small number specifying the tolerance
 %                           (e.g., 1e-08).
@@ -30,14 +32,15 @@ function [x,d,eq_set,Q,R] = ...
 %           x   -   n-dimemsional solution vector to the NNLS problem.
 %           d   -   m-dimensional col residual vector d = A*x-b
 %           eq_set      -   Updated equicorrelation set of the BPDN problem
-%                           It is is strictly ``less" than the input.
 %           Q   -   Updated orthogonal matrix from the QR decomposition
 %           R   -   Updated upper triangular matrix from the QR
 %                   decomposition
+%           num_linsolve     - Number of times linsolve is called
 
 
 %% Initialization
 [~, n] = size(A);
+num_linsolve = 0;
 active_set = true(n,1);
 tmp = Q.'*b;
 
@@ -45,6 +48,7 @@ tmp = Q.'*b;
 %% Check if the LSQ is admissible and identify potential issues
 if(~issparse(A))
     [u,r1] = linsolve(R,tmp,opts);
+    num_linsolve = num_linsolve + 1;
     
     % Check if the system is singular. If so, avoid solving it with QR.
     if(r1 < tol)
@@ -57,6 +61,7 @@ if(~issparse(A))
     end
 else
     u = R\tmp;
+    num_linsolve = num_linsolve + 1;
 end
 
 % Check if the LSQ solution is admissible.
@@ -98,17 +103,21 @@ while(true)
     end
 
     % Update the QR decomposition.
-    if(remove_update)
-        [~, J] = min(u);
-        [Q,R] = qrdelete(Q,R,J);
-    elseif(insert_update)
-        % Extract the new element added to the active set and its column.
-        [~, J] = max(Atop_times_rho);
-        col = A(:,J);
-        loc = find(find(active_set) == J);
-        [Q,R] = qrinsert(Q,R,loc,col);
+    if(~issparse(A))
+        if(remove_update)
+            [~, J] = min(u);
+            [Q,R] = qrdelete(Q,R,J);
+        elseif(insert_update)
+            % Extract the new element added to the active set and its column.
+            [~, J] = max(Atop_times_rho);
+            col = A(:,J);
+            loc = find(find(active_set) == J);
+            [Q,R] = qrinsert(Q,R,loc,col);
+        else
+            % Multiple column deletes or inserts not supported.
+            [Q,R] = qr(A(:,active_set));
+        end
     else
-        % Multiple column deletes or inserts not supported.
         [Q,R] = qr(A(:,active_set));
     end
     
@@ -116,6 +125,7 @@ while(true)
     tmp = Q.'*b;
     if(~issparse(A))
         [u,r2] = linsolve(R,tmp,opts);
+        num_linsolve = num_linsolve + 1;
         % Check if linsolve is singular; recompute QR decomposition if so.
         if(r2 < tol)
             disp("Warning: Linear system is nearly singular." + ...
@@ -126,6 +136,7 @@ while(true)
         end    
     else
         u = R\tmp;
+        num_linsolve = num_linsolve + 1;
     end
 end
 

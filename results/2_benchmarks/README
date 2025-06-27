@@ -1,0 +1,68 @@
+%%%%%
+% The ten benchmark datasets that were used for this projected are listed below.
+% Copy and paste them into the MATLAB terminal (assumed to be located in the project directory) to load the data. Add
+%     another ../../ at the beginning if loaded from a subdirectory in results.
+% NOTE: Loading the data will load a variable called ``specs", without the quotes, containing info about the data.
+%%%%%
+
+load './../LOCAL_DATA/l1_testset_data/spear_inst_73.mat'     % m=512,n=4096,dense,HDR,ERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_74.mat'     % m=512,n=4096,dense,HDR,extendedERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_237.mat'    % m=512,n=4096,dense,HDR,noERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_347.mat'    % m=512,n=4096,dense,LDR,ERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_348.mat'    % m=512,n=4096,dense,LDR,extendedERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_511.mat'    % m=512,n=4096,dense,LDR,noERC
+
+
+load './../LOCAL_DATA/l1_testset_data/spear_inst_147.mat'    % m=1024,n=8192,dense,HDR,ERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_148.mat'    % m=1024,n=8192,dense,HDR,extendedERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_274.mat'    % m=1024,n=8192,dense,HDR,noERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_421.mat'    % m=1024,n=8192,dense,LDR,ERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_422.mat'    % m=1024,n=8192,dense,LDR,extendedERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_548.mat'    % m=1024,n=8192,dense,LDR,noERC
+
+
+load './../LOCAL_DATA/l1_testset_data/spear_inst_173.mat'    % m=2048,n=12288,sparse,HDR,ERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_174.mat'    % m=2048,n=12288,sparse,HDR,extendedERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_447.mat'    % m=2048,n=12288,sparse,LDR,ERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_448.mat'    % m=2048,n=12288,sparse,LDR,extendedERC
+
+load './../LOCAL_DATA/l1_testset_data/spear_inst_199.mat'    % m=8192,n=49152,sparse,HDR,ERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_200.mat'    % m=8192,n=49512,sparse,HDR,extendedERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_473.mat'    % m=8192,n=49512,sparse,LDR,ERC
+load './../LOCAL_DATA/l1_testset_data/spear_inst_474.mat'    % m=8192,n=49512,sparse,LDR,extendedERC
+
+
+%%%%%
+% Approximate running times:
+
+% inst_73: BP=0.013s,BPDN=0.010s,GLMNET1e-04=0.10s,GLMNET1e-08=0.10s,FISTA=0.25s
+% inst_74: BP=0.011s,BPDN=0.090s,GLMNET1e-04=0.10s,GLMNET1e-08=0.10s,FISTA=0.21s
+% inst_237: BP=0.081s,BPDN=0.18s,GLMNET1e-04=0.12s,GLMNET1e-08=0.12s,FISTA=9.44s
+% inst_347: BP=0.010s,BPDN=0.014s,GLMNET1e-04=0.10s,GLMNET1e-08=0.10s,FISTA=5.67s
+% inst_348: BP=0.013s,BPDN=0.12s,GLMNET1e-04=0.10s,GLMNET1e-08=0.11s,FISTA=0.25s
+% inst_511: BP=0.064s,BPDN=0.254s,GLMNET1e-04=0.15s,GLMNET1e-08=0.24s,FISTA=180.15s (!ERROR \w GREEDY METHOD)
+
+% inst_147: BP=0.038s,BPDN=0.28s,GLMNET1e-04=0.39s,GLMNET1e-08=0.37s,FISTA=0.75s
+% inst_148: BP=0.058s,BPDN=0.30s,GLMNET1e-04=0.36s,GLMNET1e-08=0.36s,FISTA=1.00s
+% inst_274: BP=0.66s,BPDN=1.5665s,GLMNET1e-04=0.76s,GLMNET1e-08=0.86s,FISTA=875.50s
+% inst_421: BP=0.027s,BPDN=0.56s,GLMNET1e-04=0.64s,GLMNET1e-08=0.64s
+% inst_422: BP=0.041s,BPDN=0.71s,GLMNET1e-04=0.66s,GLMNET1e-08=0.70s
+% inst_548: BP=0.53s,BPDN=1.90s,GLMNET1e-04=1.05s,GLMNET1e-08=1.49s
+
+% inst_173: BP=0.43s,BPDN=0.68s
+% inst_174: BP=6.36s,BPDN=5.75s
+% inst_447: BP=0.53s,BPDN=0.60s
+% inst_448: BP=3.39s,BPDN=3.39s
+
+% inst_199: BP=1.98s,BPDN=2.51s
+% inst_200: BP=61.46s,BPDN=66.93s
+% inst_473: BP=1.86s,BPDN=2.41s
+% inst_474: BP=60.25s,BPDN=60.16s
+
+% NOTES: There's an issue with the Problem 511 with the greedy method. This is because of how the solution is calculated.
+
+% TODO: 1) GLMNET in MATLAB, as opposed to LASSO, and check if one can use sparse matrices.
+% TODO: 2) Fix the error with instance 511. This may entail rewriting some routines...
+% TODO: 3) Experimental setup from my own nPDGH paper, coordinate descent method, Tillmann's paper.
+
+%%%%%

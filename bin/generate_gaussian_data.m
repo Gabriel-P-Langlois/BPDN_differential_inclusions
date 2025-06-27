@@ -1,4 +1,4 @@
-function [A,b,x_true] = generate_gaussian_data(m,n,SNR,val_nonzero,prop)
+function [A,b,xsol] = generate_gaussian_data(m,n,SNR,val_nonzero,prop)
 % generate_gaussian_data    Generate synthetic data with Gaussian noise
 %                           Taken from ``Sparse Regression: Scalable 
 %                           Algorithms and Empirical Performance" by 
@@ -18,12 +18,14 @@ function [A,b,x_true] = generate_gaussian_data(m,n,SNR,val_nonzero,prop)
 
 % Generate design matrix
 A = randn(m,n);
-A = A./sqrt(sum(A.^2)/m);
+A = A./sqrt(sum(A.^2));
 
 % Compute ``true" solution
-x_true = zeros(n,1); x_true(randsample(n,floor(n*prop))) = val_nonzero; 
+xsol = zeros(n,1); 
+xsol(randsample(n,floor(n*prop))) = ...
+    val_nonzero.*sign(rand(floor(n*prop),1) - 0.5); 
 
 % Generate the noisy observation
-sigma = norm(A*x_true)/sqrt(SNR);
-b = (A*x_true + sqrt(sigma)*randn(m,1));
+sigma = norm(A*xsol)/sqrt(SNR);
+b = (A*xsol + sqrt(sigma)*randn(m,1));
 end

@@ -66,35 +66,6 @@ disp(['Total number of NNLS solves: ', num2str(count), '.'])
 disp(' ')
 
 
-%%%%%%%%%%%%%%%%%%%%
-% GLMNET
-%%%%%%%%%%%%%%%%%%%%
-%   Note 1: The matrix A and response vector b must be rescaled
-%   by a factor of sqrt(m) due to how its implemented.
-
-%   Note 2: The lasso function returns the solutions of the
-%   regularization path starting from its lowest value.
-
-%   Note 3: Unlike the exact lasso algorithm, the dual solution is Ax-b.
-
-sol_glmnet_p = zeros(m,kmax); 
-warning('off');
-
-% Run MATLAB's native lasso solver, flip it, and rescale the dual solution
-disp('Running the GLMNET algorithm for the BPDN problem...')
-tic
-sol_glmnet_x = lasso(sqrt(m)*A,sqrt(m)*b, 'lambda', t, ...
-    'Intercept', false, 'RelTol', tol_glmnet);
-sol_glmnet_x = flip(sol_glmnet_x,2);
-for k=1:1:kmax
-    sol_glmnet_p(:,k) = (A*sol_glmnet_x(:,k)-b)/t(k);
-end
-time_glmnet_alg = toc;
-disp(['Done. Total time = ', num2str(time_glmnet_alg), ' seconds.'])
-disp(' ')
-
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%
 % FISTA + selection rule
 %%%%%%%%%%%%%%%%%%%%%%%%%

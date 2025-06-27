@@ -1,12 +1,11 @@
-function [sol_x, sol_p, count] = ...
+function [sol_x, sol_p, count_NNLS, count_LSQ] = ...
     BPDN_inclusions_regpath_solver(A,b,p0,t,tol)
-% BPDN_inclusions_regpath_solver    Computes the primal and dual solutions 
-%                           of the BPDN problem \{min_{x \in \Rn} 
-%                               \frac{1}{2t}\normsq{Ax-b} + ||x||_1 \},
+% BPDN_inclusions_regpath_solver    
+%                           Computes the primal and dual solutions to BPDN
+%                           min_{x \in \Rn} {0.5\normsq{Ax-b}/t + ||x||_1},
 %                           up to the tolerance level tol, using
-%                           the minimal selection principle and solving
-%                           the corresponding slow system.
-%
+%                           differential inclusions and the minimal
+%                           selection principle.
 %
 %                           This code computes the solution to the problem 
 %                           above along a regularization path, starting 
@@ -15,10 +14,8 @@ function [sol_x, sol_p, count] = ...
 %                           sol_p(k) as the initial starting point of 
 %                           computation of the next iterate k + 1.
 %
-%
-%                           This code is optimized and uses the QR
-%                           decomposition and column updates to speed up
-%                           the calculations.
+%                           This code uses the QR decomposition and column 
+%                           updates to speed up the calculations.
 %
 %   Input
 %       A       -   m by n design matrix of the BPDN problem
@@ -37,6 +34,9 @@ function [sol_x, sol_p, count] = ...
 %                   hyperparameters. It contains the dual solutions to 
 %                   BPDN at hyperparamter t and data b within 
 %                   tolerance level tol.
+%       count_NNLS  -   Number of NNLS calls.
+%
+%       count_LSQ   -   Total number of LSQ solves
 
 
 
@@ -44,11 +44,9 @@ function [sol_x, sol_p, count] = ...
 % Options, placeholders and initial conditions.
 [m,n] = size(A);
 tol_minus = 1-tol;
-
 kmax = length(t);
 sol_x = zeros(n,kmax);
-sol_p = zeros(m,kmax);  
-sol_p(:,1) = p0;
+sol_p = zeros(m,kmax);  sol_p(:,1) = p0;
 Atop_times_p = (sol_p(:,1).'*A).';
 
 % Initialize the equicorrelation set.
@@ -64,19 +62,22 @@ opts.UT = true;
 
 
 %% Regularization path
-count = 0;
+count_NNLS = 0;
+count_LSQ = 0;
 for k=1:1:kmax  
     %% Compute the trajectory of the slow system in a piecewise fashion
     while(true)
-        count = count + 1;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Compute the NNLS problem 
         % min_{u>=0} ||K*u - (b + t*sol_p)||_{2}^{2}
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         rhs = b + t(k)*sol_p(:,k);
-        [u,d,eq_set,Q,R] = hinge_qr_lsqnonneg(K,Q,R,rhs,eq_set,opts,tol);
- 
+        [u,d,new_eq_set,Q,R,num_linsolve] = ...
+            hinge_qr_lsqnonneg(K,Q,R,rhs,eq_set,opts,tol);
+        count_NNLS = count_NNLS + 1;
+        count_LSQ = count_LSQ + num_linsolve;
+
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Compute the maximum admissible descent time over the
         % indices j \in {1,...,n} where abs(<A.'*d,ej>) >= 0.
@@ -102,17 +103,17 @@ for k=1:1:kmax
 
         if(timestep == inf)
             if(t(k) > 0)
-                sol_x(eq_set,k) = vec_of_signs(eq_set).*u(u~=0);
+                sol_x(eq_set,k) = vec_of_signs(eq_set).*u;
                 sol_p(:,k) = sol_p(:,k) + d/t(k);
                 Atop_times_p = Atop_times_p + Atop_times_d/t(k);
                 vec_of_signs = sign(-Atop_times_p);
             else
-                sol_x(eq_set,k) = vec_of_signs(eq_set).*u(u~=0);
+                sol_x(eq_set,k) = vec_of_signs(eq_set).*u;
             end
             break;
             
         elseif(t(k) > 0 && timestep*t(k) > tol_minus)
-            sol_x(eq_set,k) = vec_of_signs(eq_set).*u(u~=0);
+            sol_x(eq_set,k) = vec_of_signs(eq_set).*u;
             sol_p(:,k) = sol_p(:,k) + d/t(k);
             Atop_times_p = Atop_times_p + Atop_times_d/t(k);
             vec_of_signs = sign(-Atop_times_p);
@@ -130,15 +131,15 @@ for k=1:1:kmax
     
         
         % Update the equicorrelation set and assemble the effective matrix.
-        new_eq_set = (abs(Atop_times_p) >= tol_minus); 
-        ind = setxor(find(eq_set),find(new_eq_set));
-        eq_set = new_eq_set;        
+        new_eq_set_2 = (abs(Atop_times_p) >= tol_minus); 
+        ind = setxor(find(new_eq_set),find(new_eq_set_2));
+        eq_set = new_eq_set_2;        
         K = A(:,eq_set).*(vec_of_signs(eq_set).');
         
 
         % Update the QR decomposition if one column is added.
         % Else, recompute the QR decomposition from scratch.
-        if(isscalar(ind))
+        if(isscalar(ind) && ~issparse(A))
             % Extract new element added to eq_set and its column.
             col = A(:,ind).*(vec_of_signs(ind).');
             loc = find(find(eq_set) == ind);
@@ -154,14 +155,14 @@ for k=1:1:kmax
     if(k < kmax)
         % Update the equicorrelation set and assemble the effective matrix.
         sol_p(:,k+1) = sol_p(:,k);
-        new_eq_set = (abs(Atop_times_p) >= tol_minus); 
-        ind = setxor(find(eq_set),find(new_eq_set));
-        eq_set = new_eq_set;        
+        new_eq_set_2 = (abs(Atop_times_p) >= tol_minus); 
+        ind = setxor(find(new_eq_set),find(new_eq_set_2));
+        eq_set = new_eq_set_2;        
         K = A(:,eq_set).*(vec_of_signs(eq_set).');
 
         % Update the QR decomposition if one column is added.
         % Else, recompute the QR decomposition from scratch.
-        if(isscalar(ind))
+        if(isscalar(ind) && ~issparse(A))
             % Extract new element added to eq_set and its column.
             col = A(:,ind).*(vec_of_signs(ind).');
             loc = find(find(eq_set) == ind);
