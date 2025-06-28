@@ -52,14 +52,15 @@ K = A(:,eq_set).*(vec_of_signs(eq_set).');
 % Perform the initial QR decomposition and set the opts field
 [Q,R] = qr(K);
 opts.UT = true;
+data_is_sparse = issparse(A);
 
 
 %% Greedy algorithm
 for k=1:1:m
     % Compute the LSQ problem min_{u} ||K*v + t*sol_p||_{2}^{2}
     rhs = -sol_t(k)*sol_p;
-    tmp = (rhs.'*Q).';
-    if(~issparse(K))
+    tmp = Q.'*rhs;
+    if(~data_is_sparse)
         v = linsolve(R,tmp,opts);
     else
         v = R\tmp;
@@ -74,7 +75,7 @@ for k=1:1:m
     % Update the time variable accordingly.
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    Atop_times_xi = (xi.'*A).';
+    Atop_times_xi = A.'*xi;
     pos_set = abs(Atop_times_xi) > tol;
     Ck = inf;
 
@@ -83,9 +84,8 @@ for k=1:1:m
         term2 = vec_of_signs.*Atop_times_p;
         term3 = sign(term1);
         term4 = term3 - term2; 
-
-        vec = term4(pos_set)./term1(pos_set);
-        Ck = min(vec);
+        vec = term4./term1;
+        Ck = min(vec(pos_set));
     end
 
     sol_t(k+1) = sol_t(k)/(1+(sol_t(k)*Ck));
@@ -144,13 +144,18 @@ for k=1:1:m
 
     % Update the QR decomposition if one column is added.
     % Else, recompute the QR decomposition from scratch.
-    if(isscalar(ind) && ~issparse(A))
+    if(data_is_sparse)
+        [Q,R] = qr(K);
+    elseif(isscalar(ind))
         % Extract new element added to eq_set and its column.
         col = A(:,ind).*(vec_of_signs(ind).');
         loc = find(find(eq_set) == ind);
-        [Q,R] = qrinsert(Q,R,loc,col);
-    else
-        [Q,R] = qr(K);
+
+        % Call MATLAB's [Q,R] = qrinsert(Q,R,loc,col) without overhead
+        [~,nr] = size(R);
+        R(:,loc+1:nr+1) = R(:,loc:nr);
+        R(:,loc) = Q'*col;
+        [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
     end
 end
 

@@ -52,7 +52,7 @@ disp(' ')
 disp('Running the differential inclusions Basis Pursuit solver...')
 tic
 [sol_incl_BP_x, sol_incl_BP_p, bp_nnls_count, bp_lsq_count] = ...
-    BP_inclusions_solver(A,b,p0,tol);
+    BP_incl_direct(A,b,p0,tol);
 time_incl_BP_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_BP_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(bp_nnls_count), '.'])
@@ -71,7 +71,7 @@ disp(['Running the differential inclusions BPDN solver ' ...
     'with regularization path...'])
 tic
 [sol_incl_BPDN_x,sol_incl_BPDN_p, bpdn_nnls_count, bpdn_lsq_count] = ...
-    BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
+    BPDN_incl_regpath(A,b,p0,t,tol);
 time_incl_bpdn_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_bpdn_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(bpdn_nnls_count), '.'])
@@ -79,42 +79,6 @@ disp(['Total number of linsolve calls: ', num2str(bpdn_lsq_count)])
 disp(' ')
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Run the greedy algorithm and use it as a warm start
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-disp(' ')
-disp('Running the greedy algorithm \w thresholding...')
-tic
-[~, sol_g_p, ~, sol_g_xf, sol_g_eqset] = ...
-    greedy_homotopy_threshold(A,b,tol);
-time_greedy = toc;
-
-
-% 1) Warm start
-tic
-disp(['Running the BP solver using the greedy dual solution' ...
-    ' as a warm start.'])
-[~,~, warm_nnls_count, warm_lsq_count] = ...
-    BP_inclusions_solver(A,b,sol_g_p(:,end),tol);
-time_warm_total = time_greedy + toc;
-disp(['Done. Total time = ', num2str(time_warm_total), ' seconds.'])
-disp(['Total number of NNLS solves (BP solver): ', num2str(warm_nnls_count)])
-disp(['Total number of linsolve calls: ', num2str(m+warm_lsq_count)])
-disp(' ')
-
-
-% 2) Inversion formula.
-tic
-disp(['Running the BP solver using the greedy dual solution' ...
-    ' + inversion as a warm start.'])
-z = A(:,sol_g_eqset).'*sol_g_p(:,end);
-[~,~, inv_nnls_count, inv_lsq_count] = ...
-    BP_inclusions_solver(inv(A(:,sol_g_eqset))*A,sol_g_xf(sol_g_eqset),z,tol);
-time_inv_total = time_greedy + toc;
-disp(['Done. Total time = ', num2str(time_inv_total), ' seconds.'])
-disp(['Total number of NNLS solves (BP solver): ', num2str(inv_nnls_count)])
-disp(['Total number of linsolve calls: ', num2str(m+inv_lsq_count)])
-disp(' ')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Primal-dual \w log barrier (WIP)

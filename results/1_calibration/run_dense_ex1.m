@@ -69,7 +69,7 @@ kmax = length(t);
 disp('1. Running the differential inclusions BPDN algorithm...')
 tic
 [sol_incl_x,sol_incl_p, bpdn_count, bpdn_linsolve] = ...
-    BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
+    BPDN_incl_regpath(A,b,p0,t,tol);
 time_incl_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(bpdn_count), '.'])
@@ -84,7 +84,7 @@ disp(' ')
 disp('2. Running the differential inclusions BP algorithm...')
 tic
 [sol_incl_BP_x, sol_incl_BP_p, bp_count, bp_linsolve] = ...
-    BP_inclusions_solver(A,b,p0,tol);
+    BP_incl_direct(A,b,p0,tol);
 time_incl_BP_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_BP_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(bp_count), '.'])
@@ -98,17 +98,11 @@ disp(' ')
 % Note: This computes sol_g_xf and sol_g_eqset such that
 %    A*sol_g_xf(sol_g_eqset) = b
 disp(' ')
-disp('3. Running the greedy algorithm \w thresholding...')
+disp('3. Running the differential inclusions BP solver \w warm start')
 tic
-[sol_g_x, sol_g_p, sol_g_b, sol_g_xf, sol_g_eqset] = ...
-    greedy_homotopy_threshold(A,b,tol);
-time_greedy_alg = toc;
-disp(['Running the BP solver using the dual greedy solution' ...
-    ' as a warm start...'])
-tic
-[~,~, warm_nnls_count,warm_linsolve_count] = ...
-    BP_inclusions_solver(A,b,sol_g_p(:,end),tol);
-time_warm = time_greedy_alg + toc;
+[~,~, warm_nnls_count, warm_linsolve_count] = ...
+    BP_incl_greedy(A,b,tol);
+time_warm = toc;
 disp(['Done. Total time = ', num2str(time_warm), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(warm_nnls_count)])
 disp(['Total number of linsolve calls: ', num2str(warm_linsolve_count)])

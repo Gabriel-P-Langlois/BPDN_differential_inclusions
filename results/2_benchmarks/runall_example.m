@@ -42,7 +42,7 @@ disp(' ')
 disp('1. Running the BP inclusions solver...')
 tic
 [sol_incl_BP_x, sol_incl_BP_p, bp_nnls_count,bp_linsolve_count] = ...
-    BP_inclusions_solver(A,b,p0,tol);
+    BP_incl_direct(A,b,p0,tol);
 time_incl_BP_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_BP_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(bp_nnls_count), '.'])
@@ -57,7 +57,7 @@ disp(' ')
 disp('2. Running the BPDN inclusions solver...')
 tic
 [sol_incl_x,sol_incl_p, bpdn_nnls_count,bpdn_linsolve_count] = ...
-    BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
+    BPDN_incl_regpath(A,b,p0,t,tol);
 time_incl_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(bpdn_nnls_count), '.'])
@@ -107,7 +107,7 @@ disp(['Running the BP solver using the dual greedy solution' ...
     ' as a warm start...'])
 tic
 [~,~, warm_nnls_count,warm_linsolve_count] = ...
-    BP_inclusions_solver(A,b,sol_g_p(:,end),tol);
+    BP_incl_direct(A,b,sol_g_p(:,end),tol);
 time_warm = time_greedy_alg + toc;
 disp(['Done. Total time = ', num2str(time_warm), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(warm_nnls_count)])

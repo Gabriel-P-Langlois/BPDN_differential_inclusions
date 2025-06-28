@@ -1,6 +1,6 @@
 function [sol_x, sol_p, count_NNLS, count_LSQ] = ...
-    BPDN_inclusions_regpath_solver(A,b,p0,t,tol)
-% BPDN_inclusions_regpath_solver    
+    BPDN_incl_regpath(A,b,p0,t,tol)
+% BPDN_incl_regpath    
 %                           Computes the primal and dual solutions to BPDN
 %                           min_{x \in \Rn} {0.5\normsq{Ax-b}/t + ||x||_1},
 %                           up to the tolerance level tol, using
@@ -59,6 +59,7 @@ K = A(:,eq_set).*(vec_of_signs(eq_set).');
 % Perform the initial QR decomposition and set the opts field.
 [Q,R] = qr(K);
 opts.UT = true;
+data_is_sparse = issparse(A);
 
 
 %% Regularization path
@@ -73,8 +74,14 @@ for k=1:1:kmax
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         rhs = b + t(k)*sol_p(:,k);
-        [u,d,new_eq_set,Q,R,num_linsolve] = ...
-            hinge_qr_lsqnonneg(K,Q,R,rhs,eq_set,opts,tol);
+        if(~data_is_sparse)
+            [u,d,new_eq_set,Q,R,num_linsolve] = ...
+                hinge_qr_lsqnonneg(K,Q,R,rhs,eq_set,opts,tol);
+        else
+            [u,d,new_eq_set,Q,R,num_linsolve] = ...
+                hinge_qr_s_lsqnonneg(K,Q,R,rhs,eq_set,tol);
+        end
+
         count_NNLS = count_NNLS + 1;
         count_LSQ = count_LSQ + num_linsolve;
 
@@ -82,19 +89,17 @@ for k=1:1:kmax
         % Compute the maximum admissible descent time over the
         % indices j \in {1,...,n} where abs(<A.'*d,ej>) >= 0.
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-        Atop_times_d = (d.'*A).';
+        Atop_times_d = A.'*d;
         pos_set = abs(Atop_times_d) > tol;
         timestep = inf;
-
-        if (any(pos_set))
+    
+        if(any(pos_set))
             term1 = vec_of_signs.*Atop_times_d;
             term2 = vec_of_signs.*Atop_times_p;
             term3 = sign(term1);
             term4 = term3 - term2; 
-
-            vec = term4(pos_set)./term1(pos_set);
-            timestep = min(vec);
+            vec = term4./term1;    
+            timestep = min(vec(pos_set));
         end
     
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -129,27 +134,28 @@ for k=1:1:kmax
         Atop_times_p = Atop_times_p + timestep*Atop_times_d;
         vec_of_signs = sign(-Atop_times_p);
     
-        
         % Update the equicorrelation set and assemble the effective matrix.
         new_eq_set_2 = (abs(Atop_times_p) >= tol_minus); 
         ind = setxor(find(new_eq_set),find(new_eq_set_2));
         eq_set = new_eq_set_2;        
         K = A(:,eq_set).*(vec_of_signs(eq_set).');
         
-
         % Update the QR decomposition if one column is added.
         % Else, recompute the QR decomposition from scratch.
-        if(isscalar(ind) && ~issparse(A))
+        if(isscalar(ind))
             % Extract new element added to eq_set and its column.
             col = A(:,ind).*(vec_of_signs(ind).');
             loc = find(find(eq_set) == ind);
-            
-            [Q,R] = qrinsert(Q,R,loc,col);
+
+            % Call MATLAB's [Q,R] = qrinsert(Q,R,loc,col) without overhead
+            [~,nr] = size(R);
+            R(:,loc+1:nr+1) = R(:,loc:nr);
+            R(:,loc) = Q'*col;
+            [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
         else
             [Q,R] = qr(K);
         end
     end
-
 
     % Preparation for the next iterate
     if(k < kmax)
@@ -162,13 +168,17 @@ for k=1:1:kmax
 
         % Update the QR decomposition if one column is added.
         % Else, recompute the QR decomposition from scratch.
-        if(isscalar(ind) && ~issparse(A))
+        if(isscalar(ind))
             % Extract new element added to eq_set and its column.
             col = A(:,ind).*(vec_of_signs(ind).');
             loc = find(find(eq_set) == ind);
 
-            [Q,R] = qrinsert(Q,R,loc,col);
-        else
+            % Call MATLAB's [Q,R] = qrinsert(Q,R,loc,col) without overhead
+            [~,nr] = size(R);
+            R(:,loc+1:nr+1) = R(:,loc:nr);
+            R(:,loc) = Q'*col;
+            [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
+        elseif(~isempty(ind))
             [Q,R] = qr(K);
         end
     end

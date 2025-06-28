@@ -52,12 +52,18 @@ for i=1:1:length(inst)
     kmax = length(t);
 
     for j=1:1:repeat
+        data_is_sparse = issparse(A);
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Diff. Inclusions: BPDN
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         tic
-        [sol_incl_x,sol_incl_p, bpdn_nnls_count, bpdn_linsolve] = ...
-            BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
+        if(~data_is_sparse)
+            [sol_incl_x,sol_incl_p, bpdn_nnls_count, bpdn_linsolve] = ...
+                BPDN_incl_regpath(A,b,p0,t,tol);
+        else
+            [sol_incl_x,sol_incl_p, bpdn_nnls_count, bpdn_linsolve] = ...
+                BPDN_incl_regpath_s(A,b,p0,t,tol);
+        end
         time_incl_BPDN = time_incl_BPDN + toc;
         
         
@@ -65,22 +71,27 @@ for i=1:1:length(inst)
         % Diff. Inclusions: Direct Basis Pursuit Solver
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         tic
-        [sol_incl_BP_x, sol_incl_BP_p, bp_nnls_count, bp_linsolve] = ...
-            BP_inclusions_solver(A,b,p0,tol);
+        if(~data_is_sparse)
+            [sol_incl_BP_x, sol_incl_BP_p, bp_nnls_count, bp_linsolve] = ...
+                BP_incl_direct(A,b,p0,tol);
+        else
+            [sol_incl_BP_x, sol_incl_BP_p, bp_nnls_count, bp_linsolve] = ...
+                BP_incl_direct_s(A,b,p0,tol);
+        end
         time_incl_BP = time_incl_BP + toc;
         
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Greedy homotopy algorithm via the matroid property
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % Note: This computes sol_g_xf and sol_g_eqset such that
-        %    A*sol_g_xf(sol_g_eqset) = b
         tic
-        [sol_g_x, sol_g_p, sol_g_b, sol_g_xf, sol_g_eqset] = ...
-            greedy_homotopy_threshold(A,b,tol);
-        [~,~, warm_nnls_count,warm_linsolve_count] = ...
-            BP_inclusions_solver(A,b,sol_g_p(:,end),tol);
-        time_incl_warm = time_incl_warm + toc;
+        if(~data_is_sparse)
+            [~,~, warm_nnls_count, warm_linsolve_count] = ...
+                BP_incl_greedy(A,b,tol);
+        else
+            [~,~, warm_nnls_count, warm_linsolve_count] = ...
+                BP_incl_greedy_s(A,b,tol);
+        end
+        time_incl_warm = toc;
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % GLMNET

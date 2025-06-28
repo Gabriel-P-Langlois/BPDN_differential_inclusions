@@ -18,7 +18,7 @@
 
 
 %% Initialization
-use_mlasso = true;
+use_mlasso = false;
 use_mlinprog = false;
 use_fista = false;
 
@@ -36,8 +36,8 @@ prop = 0.05;
 
 % Tolerance levels
 tol = 1e-08;
-tol_glmnet = 1e-14;
-tol_mlasso = 1e-06;
+tol_glmnet = 1e-12;    % Default is 1e-04
+tol_mlasso = 1e-06;    % Default is 1e-04
 tol_fista = 1e-8;
 
 % Grid of hyperparameters
@@ -58,9 +58,10 @@ x0 = zeros(n,1);
 p0 = -b/t0;
 
 % Generate desired grid of hyperparameters
-t = t0 * (maxval:spacing:minval);
+%t = t0 * (maxval:spacing:minval);
+%kmax = length(t);
+t = t0 * ([maxval:spacing:0.10,0.099:-0.001:0.0]);
 kmax = length(t);
-
 
 %% Solve BPDN using Algorithm 1, MATLAB's native Lasso solver, and FISTA
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -69,7 +70,7 @@ kmax = length(t);
 disp('1. Running the differential inclusions BPDN algorithm...')
 tic
 [sol_incl_x,sol_incl_p, bpdn_count, bpdn_linsolve] = ...
-    BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
+    BPDN_incl_regpath(A,b,p0,t,tol);
 time_incl_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(bpdn_count), '.'])
@@ -84,7 +85,7 @@ disp(' ')
 disp('2. Running the differential inclusions BP algorithm...')
 tic
 [sol_incl_BP_x, sol_incl_BP_p, bp_count, bp_linsolve] = ...
-    BP_inclusions_solver(A,b,p0,tol);
+    BP_incl_direct(A,b,p0,tol);
 time_incl_BP_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_BP_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(bp_count), '.'])
@@ -98,17 +99,11 @@ disp(' ')
 % Note: This computes sol_g_xf and sol_g_eqset such that
 %    A*sol_g_xf(sol_g_eqset) = b
 disp(' ')
-disp('3. Running the greedy algorithm \w thresholding...')
+disp('3. Running the differential inclusions BP solver \w warm start')
 tic
-[sol_g_x, sol_g_p, sol_g_b, sol_g_xf, sol_g_eqset] = ...
-    greedy_homotopy_threshold(A,b,tol);
-time_greedy_alg = toc;
-disp(['Running the BP solver using the dual greedy solution' ...
-    ' as a warm start...'])
-tic
-[~,~, warm_nnls_count,warm_linsolve_count] = ...
-    BP_inclusions_solver(A,b,sol_g_p(:,end),tol);
-time_warm = time_greedy_alg + toc;
+[~,~, warm_nnls_count, warm_linsolve_count] = ...
+    BP_incl_greedy(A,b,tol);
+time_warm = toc;
 disp(['Done. Total time = ', num2str(time_warm), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(warm_nnls_count)])
 disp(['Total number of linsolve calls: ', num2str(warm_linsolve_count)])

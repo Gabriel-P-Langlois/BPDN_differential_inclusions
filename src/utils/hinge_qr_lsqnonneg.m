@@ -6,24 +6,26 @@ function [x,d,eq_set,Q,R,num_linsolve] = ...
 %                       ``A Simple New Algorithm for Quadratic Programming 
 %                       with Applications in Statistics" by Mary C. Meyers.
 %
-%                   This version of the Method of Hinges starts with the
-%                   with the full active set and maintains the QR
+%                   1) This version of the Method of Hinges starts with
+%                   the full active set and maintains the QR
 %                   decomposition of A as we remove elements from the
 %                   active set or add elements to the active set.
 %
+%                   2) This function works with dense matrices only.
+%
 %   Input
-%           A           -   (m x n)-dimensional design matrix A
-%           Q           -   (m x n)-dimensional, economic form of the
+%           A           -   (m x n)-dimensional dense matrix A
+%           Q           -   (m x n)-dimensional, non-economic
 %                           orthogonal matrix obtained from the QR
-%                           decomposition [Q,R] = qr(A,"econ","vector")
+%                           decomposition [Q,R] = qr(A).
 %           R           -   (n x n)-dimensional, economic form of the
 %                           upper triangular matrix obtained from the QR
 %                           decomposition [Q,R] = qr(A,"econ","vector")
 %                           min_{x \in \Rn} ||Ax - b||_{2}^{2}.
 %           b           -   m-dimensional col data vector.
 %           eq_set      -   equicorrelation set of the BPDN problem
-%                           NOTE: Used to improve performance, not actually
-%                           recompute the equicorrelation set.
+%                           NOTE: Used to improve performance, does not
+%                           actually recompute the equicorrelation set.
 %           opts        -   opts field for the linsolve function.
 %           tol         -   small number specifying the tolerance
 %                           (e.g., 1e-08).
@@ -39,6 +41,10 @@ function [x,d,eq_set,Q,R,num_linsolve] = ...
 
 
 %% Initialization
+if(issparse(A))
+    error("The matrix A is sparse. " + ...
+        "Use the function hinge_qr_s_lsqnonneg.m instead.")
+end
 [~, n] = size(A);
 num_linsolve = 0;
 active_set = true(n,1);
@@ -46,29 +52,24 @@ tmp = Q.'*b;
 
 
 %% Check if the LSQ is admissible and identify potential issues
-if(~issparse(A))
-    [u,r1] = linsolve(R,tmp,opts);
-    num_linsolve = num_linsolve + 1;
+[u,r1] = linsolve(R,tmp,opts);
+num_linsolve = num_linsolve + 1;
     
-    % Check if the system is singular. If so, avoid solving it with QR.
-    if(r1 < tol)
-        [x,d] = hinge_lsqnonneg(A,b,tol);
-        active_set(x==0) = false;
-        [Q,R] = qr(A(:,active_set));
-        ind = find(eq_set);
-        eq_set(ind(~active_set)) = 0;
-        return;
-    end
-else
-    u = R\tmp;
-    num_linsolve = num_linsolve + 1;
+% Check if the system is singular. If so, avoid solving it with QR.
+if(r1 < tol)
+   [x,d] = hinge_lsqnonneg(A,b,tol);
+   active_set(x==0) = false;
+   [Q,R] = qr(A(:,active_set));
+   ind = find(eq_set);
+   eq_set(ind(~active_set)) = 0;
+   return;
 end
 
-% Check if the LSQ solution is admissible.
+% Check whether the LSQ solution is admissible; is so, return it.
 if(min(u) > -tol)
     x = u; 
     d = A*x-b;
-    return
+    return;
 end
 
 
@@ -103,43 +104,45 @@ while(true)
     end
 
     % Update the QR decomposition.
-    if(~issparse(A))
-        if(remove_update)
-            [~, J] = min(u);
-            [Q,R] = qrdelete(Q,R,J);
-        elseif(insert_update)
-            % Extract the new element added to the active set and its column.
-            [~, J] = max(Atop_times_rho);
-            col = A(:,J);
-            loc = find(find(active_set) == J);
-            [Q,R] = qrinsert(Q,R,loc,col);
-        else
-            % Multiple column deletes or inserts not supported.
-            [Q,R] = qr(A(:,active_set));
-        end
+    if(remove_update)
+        % Exact element removed from eq_set and its column
+        [~, J] = min(u);
+
+        % Call MATLAB's [Q,R] = qrdelete(Q,R,J); without overhead
+        R(:,J) = [];
+        [Q,R]=matlab.internal.math.deleteCol(Q,R,J);
+    elseif(insert_update)
+        % Extract new element added to eq_set and its column.
+        [~, J] = max(Atop_times_rho);
+        col = A(:,J);
+        loc = find(find(active_set) == J);
+
+        % Call MATLAB's [Q,R] = qrinsert(Q,R,loc,col) without overhead
+        [~,nr] = size(R);
+        R(:,loc+1:nr+1) = R(:,loc:nr);
+        R(:,loc) = Q'*col;
+        [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
     else
+        % Multiple column deletes or inserts not supported.
         [Q,R] = qr(A(:,active_set));
     end
     
     % Compute LSQ solution to Au = b with the QR decomposition A=Q*R.
     tmp = Q.'*b;
-    if(~issparse(A))
-        [u,r2] = linsolve(R,tmp,opts);
-        num_linsolve = num_linsolve + 1;
-        % Check if linsolve is singular; recompute QR decomposition if so.
-        if(r2 < tol)
-            disp("Warning: Linear system is nearly singular." + ...
-                " Recomputing QR decomposition...")
-            [Q,R] = qr(A(:,active_set));
-            tmp = (b.'*Q).';
-            u = R\tmp;
-        end    
-    else
+    [u,r2] = linsolve(R,tmp,opts);
+    num_linsolve = num_linsolve + 1;
+
+    % Check if linsolve is singular; recompute QR decomposition if so.
+    if(r2 < tol)
+        disp("Warning: Linear system is nearly singular." + ...
+            " Recomputing QR decomposition...")
+        [Q,R] = qr(A(:,active_set));
+        tmp = (b.'*Q).';
         u = R\tmp;
-        num_linsolve = num_linsolve + 1;
-    end
+    end    
 end
 
+% Return the solution and its residual
 x = zeros(n,1); x(active_set) = u;
 d = -theta;
 ind = find(eq_set);

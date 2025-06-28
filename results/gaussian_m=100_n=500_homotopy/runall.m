@@ -35,7 +35,7 @@ disp(' ')
 disp('Running the differential inclusions Basis Pursuit solver...')
 tic
 [sol_inclBP_x, sol_inclBP_p, BP_count] = ...
-    BP_inclusions_solver(A,b,p0,tol);
+    BP_incl_direct(A,b,p0,tol);
 time_incl_BP_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_BP_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(BP_count), '.'])
@@ -64,7 +64,7 @@ disp(' ')
 disp('Running the BPDN differential inclusions algorithm...')
 tic
 [sol_incl_x, sol_incl_p, BPDN_count] = ...
-    BPDN_inclusions_regpath_solver(A,b,p0,sol_hBPDN_t,tol);
+    BPDN_incl_regpath(A,b,p0,sol_hBPDN_t,tol);
 time_incl_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(BPDN_count), '.'])

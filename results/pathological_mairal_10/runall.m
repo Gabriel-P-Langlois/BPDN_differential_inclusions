@@ -30,7 +30,7 @@ p0 = -b/t0;
 disp(' ')
 disp('1. Running the differential inclusions Basis Pursuit solver...')
 tic
-[sol_inclBP_x, sol_inclBP_p, bp_count] = BP_inclusions_solver(A,b,p0,tol);
+[sol_inclBP_x, sol_inclBP_p, bp_count] = BP_incl_direct(A,b,p0,tol);
 time_inclBP_alg = toc;
 disp(['Done. Total time = ', num2str(time_inclBP_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(bp_count)])
@@ -49,19 +49,15 @@ disp(' ')
 
 
 %% Run 3: Warm start via greedy homotopy algorithm via the matroid property 
-% Note: This computes sol_g_xf and sol_g_eqset such that
-%    A*sol_g_xf(sol_g_eqset) = b
 disp(' ')
-disp(['3. Running the greedy algorithm \w thresholding and using it ' ...
-    'as a warm-start for the BP solver.'])
+disp('3. Running the differential inclusions BP solver \w warm start')
 tic
-[~, sol_g_p, ~, sol_g_xf, sol_g_eqset] = ...
-    greedy_homotopy_threshold(A,b,tol);
-[sol_warm_x,sol_warm_p, warm_count] = ...
-    BP_inclusions_solver(A,b,sol_g_p(:,end),tol);
+[~,~, warm_nnls_count, warm_linsolve_count] = ...
+    BP_incl_greedy(A,b,tol);
 time_warm = toc;
 disp(['Done. Total time = ', num2str(time_warm), ' seconds.'])
-disp(['Total number of NNLS solves: ', num2str(warm_count)])
+disp(['Total number of NNLS solves: ', num2str(warm_nnls_count)])
+disp(['Total number of linsolve calls: ', num2str(warm_linsolve_count)])
 disp(' ')
 
 
@@ -79,7 +75,7 @@ A_new = -inv(A(:,sol_g_eqset))*A;
 
 % Invoke the bp solver on the modified problem
 [sol_test_x, sol_test_p, test_count] = ...
-    BP_inclusions_solver(A_new,b_new,p_new,tol);
+    BP_incl_direct(A_new,b_new,p_new,tol);
 time_new = toc;
 
 % Invert the solution to get the corresponding vector p.

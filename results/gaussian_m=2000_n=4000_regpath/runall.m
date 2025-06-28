@@ -59,7 +59,7 @@ kmax = length(t);
 disp('Running the differential inclusions algorithm for the BPDN problem...')
 tic
 [sol_incl_x,sol_incl_p, count] = ...
-    BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
+    BPDN_incl_regpath(A,b,p0,t,tol);
 time_incl_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(count), '.'])

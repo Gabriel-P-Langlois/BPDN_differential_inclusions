@@ -53,7 +53,7 @@ disp(' ')
 disp('Running the differential inclusions Basis Pursuit solver...')
 tic
 [sol_incl_BP_x, sol_incl_BP_p, bp_count] = ...
-    BP_inclusions_solver(A,b,p0,tol);
+    BP_incl_direct(A,b,p0,tol);
 time_incl_BP_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_BP_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(bp_count), '.'])
@@ -68,7 +68,7 @@ disp(' ')
 disp('Running the differential inclusions algorithm for the BPDN problem...')
 tic
 [sol_incl_x,sol_incl_p, bpdn_count] = ...
-    BPDN_inclusions_regpath_solver(A,b,p0,t,tol);
+    BPDN_incl_regpath(A,b,p0,t,tol);
 time_incl_alg = toc;
 disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(bpdn_count), '.'])
@@ -76,27 +76,20 @@ disp(['||x_true-sol_incl_x(:,end)||_{2} = ', num2str(norm(x-sol_incl_x(:,end)))]
 disp(' ')
 
 
-%% Greedy homotopy algorithm via the matroid property
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Greedy homotopy algorithm via the matroid property
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Note: This computes sol_g_xf and sol_g_eqset such that
 %    A*sol_g_xf(sol_g_eqset) = b
 disp(' ')
-disp('Running the greedy algorithm \w thresholding...')
+disp('3. Running the differential inclusions BP solver \w warm start')
 tic
-[sol_g_x, sol_g_p, sol_g_b, sol_g_xf, sol_g_eqset] = ...
-    greedy_homotopy_threshold(A,b,tol);
-time_greedy_alg = toc;
-disp(['Done. Total time = ', num2str(time_greedy_alg), ' seconds.'])
-disp(' ')
-
-disp(' ')
-disp(['Running the BP solver using the dual greedy solution' ...
-    ' as a warm start...'])
-tic
-[~,~, warm_count] = ...
-    BP_inclusions_solver(A,b,sol_g_p(:,end),tol);
+[~,~, warm_nnls_count, warm_linsolve_count] = ...
+    BP_incl_greedy(A,b,tol);
 time_warm = toc;
 disp(['Done. Total time = ', num2str(time_warm), ' seconds.'])
-disp(['Total number of NNLS solves: ', num2str(warm_count)])
+disp(['Total number of NNLS solves: ', num2str(warm_nnls_count)])
+disp(['Total number of linsolve calls: ', num2str(warm_linsolve_count)])
 disp(' ')
 
 
