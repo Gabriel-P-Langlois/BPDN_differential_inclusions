@@ -13,12 +13,7 @@
 
 %% Initialization
 % Tolerance levels
-tol_fista = 1e-04;
-
-% Grid of hyperparameters
-spacing = -0.005;
-maxval = 0.995;
-minval = 0.0;
+tol_fista = 1e-03;
 
 inst_dense = [147,148,274,421,422,548];
 inst_sparse = [173,174,447,448,199,200,473,474];
@@ -38,9 +33,14 @@ for i=1:1:length(inst)
     t0 = norm(A.'*b,inf);
     x0 = zeros(n,1);
     p0 = -b/t0;
+    data_is_sparse = issparse(A);
         
     % Generate desired grid of hyperparameters
-    t = t0 * (maxval:spacing:minval);
+    if(data_is_sparse)
+        t = t0 * [logspace(0,-4,m/8),0.0];
+    else
+        t = t0 * [logspace(0,-4,m/2),0.0];
+    end
     kmax = length(t);
 
     tic

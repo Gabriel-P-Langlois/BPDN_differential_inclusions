@@ -59,7 +59,6 @@ K = A(:,eq_set).*(vec_of_signs(eq_set).');
 % Perform the initial QR decomposition and set the opts field.
 [Q,R] = qr(K);
 opts.UT = true;
-data_is_sparse = issparse(A);
 
 
 %% Regularization path
@@ -74,13 +73,8 @@ for k=1:1:kmax
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         rhs = b + t(k)*sol_p(:,k);
-        if(~data_is_sparse)
-            [u,d,new_eq_set,Q,R,num_linsolve] = ...
-                hinge_qr_lsqnonneg(K,Q,R,rhs,eq_set,opts,tol);
-        else
-            [u,d,new_eq_set,Q,R,num_linsolve] = ...
-                hinge_qr_s_lsqnonneg(K,Q,R,rhs,eq_set,tol);
-        end
+        [u,d,active_set,Q,R,num_linsolve] = ...
+            hinge_lsqnonneg_qr(K,Q,R,rhs,eq_set,opts,tol);
 
         count_NNLS = count_NNLS + 1;
         count_LSQ = count_LSQ + num_linsolve;
@@ -135,9 +129,9 @@ for k=1:1:kmax
         vec_of_signs = sign(-Atop_times_p);
     
         % Update the equicorrelation set and assemble the effective matrix.
-        new_eq_set_2 = (abs(Atop_times_p) >= tol_minus); 
-        ind = setxor(find(new_eq_set),find(new_eq_set_2));
-        eq_set = new_eq_set_2;        
+        new_eq_set = (abs(Atop_times_p) >= tol_minus); 
+        ind = setxor(find(active_set),find(new_eq_set));
+        eq_set = new_eq_set;        
         K = A(:,eq_set).*(vec_of_signs(eq_set).');
         
         % Update the QR decomposition if one column is added.
@@ -161,9 +155,9 @@ for k=1:1:kmax
     if(k < kmax)
         % Update the equicorrelation set and assemble the effective matrix.
         sol_p(:,k+1) = sol_p(:,k);
-        new_eq_set_2 = (abs(Atop_times_p) >= tol_minus); 
-        ind = setxor(find(new_eq_set),find(new_eq_set_2));
-        eq_set = new_eq_set_2;        
+        new_eq_set = (abs(Atop_times_p) >= tol_minus); 
+        ind = setxor(find(active_set),find(new_eq_set));
+        eq_set = new_eq_set;        
         K = A(:,eq_set).*(vec_of_signs(eq_set).');
 
         % Update the QR decomposition if one column is added.
@@ -173,11 +167,15 @@ for k=1:1:kmax
             col = A(:,ind).*(vec_of_signs(ind).');
             loc = find(find(eq_set) == ind);
 
-            % Call MATLAB's [Q,R] = qrinsert(Q,R,loc,col) without overhead
-            [~,nr] = size(R);
-            R(:,loc+1:nr+1) = R(:,loc:nr);
-            R(:,loc) = Q'*col;
-            [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
+            if(~isempty(loc))
+                % Call MATLAB's [Q,R] = qrinsert(Q,R,loc,col) without overhead
+                [~,nr] = size(R);
+                R(:,loc+1:nr+1) = R(:,loc:nr);
+                R(:,loc) = Q'*col;
+                [Q,R] = matlab.internal.math.insertCol(Q,R,loc);
+            else
+                [Q,R] = qr(K);
+            end
         elseif(~isempty(ind))
             [Q,R] = qr(K);
         end

@@ -30,7 +30,6 @@ function [sol_x, sol_p, count_NNLS, count_LSQ] = ...
 %% Initialization
 [~,n] = size(A);
 tol_minus = 1-tol;
-sol_x = zeros(n,1);
 Atop_times_p = (sol_p.'*A).';
 
 % Initialize the equicorrelation set
@@ -48,7 +47,7 @@ while(true)
     % Compute the NNLS problem 
     % min_{u>=0} ||K*u - b||_{2}^{2}
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    [v,d,num_linsolve] = hinge_qr_s_lsqnonneg(K,b,tol);  
+    [v,d,num_linsolve] = hinge_lsqnonneg_s(K,b,tol);  
 
     count_NNLS = count_NNLS + 1;
     count_LSQ = count_LSQ + num_linsolve;
@@ -75,6 +74,7 @@ while(true)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     if(timestep == inf)
+        sol_x = spalloc(n,1,sum(eq_set));
         sol_x(eq_set) = vec_of_signs(eq_set).*v;
         break;
     end

@@ -49,7 +49,7 @@ disp(' ')
 disp('Running the BPND homotopy solver...')
 tic
 [sol_hBPDN_x, sol_hBPDN_p, sol_hBPDN_t, hBPDN_count] = ...
-    BPDN_homotopy_solver(A,b,tol);
+    BPDN_incl_homotopy(A,b,tol);
 time_hBPDN_alg = toc;
 disp(['Done. Total time = ', num2str(time_hBPDN_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(hBPDN_count), '.'])

@@ -39,26 +39,14 @@ disp(' ')
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Diff. Inclusions: Homotopy for BP
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-disp(' ')
-disp('Running the BPDN homotopy solver...')
-tic
-[sol_hBP2_x, sol_hBP2_p, count2] = BP_homotopy_solver(A,b,tol);
-time_homotopy2_alg = toc;
-disp(['Done. Total time = ', num2str(time_homotopy2_alg), ' seconds.'])
-disp(['Total number of NNLS solves: ', num2str(count2), '.'])
-disp(' ')
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Diff. Inclusions: Homotopy for BPDN
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+total_t = 5*m;
 disp(' ')
 disp('Running the BPND homotopy solver...')
 tic
 [sol_hBPDN2_x, sol_hBPDN2_p, sol_hBPDN2_t, hBPDN_count2] = ...
-    BPDN_homotopy_solver(A,b,tol);
+    BPDN_incl_homotopy(A,b,total_t,tol);
 time_hBPDN2_alg = toc;
 disp(['Done. Total time = ', num2str(time_hBPDN2_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(hBPDN_count2), '.'])
@@ -159,8 +147,6 @@ end
 
 %% Summarize some results
 disp('Differences between basis pursuit solutions (primal/dual)...')
-disp(norm(sol_inclBP2_x-sol_hBP2_x))
-disp(norm(sol_inclBP2_p-sol_hBP2_p))
 disp(norm(sol_inclBP2_x-sol_hBPDN2_x(:,end)))
 disp(norm(sol_inclBP2_p-sol_hBPDN2_p(:,end)))
 

@@ -1,6 +1,6 @@
 function [x,d,eq_set,Q,R,num_linsolve] = ...
-    hinge_qr_lsqnonneg(A,Q,R,b,eq_set,opts,tol)
-% HINGE_QR_LSQNONNEG   This function computes the nonnegative LSQ problem
+    hinge_lsqnonneg_qr(A,Q,R,b,eq_set,opts,tol)
+% HINGE_LSQNONNEG_QR   This function computes the nonnegative LSQ problem
 %                       min_{x>=0} ||A*x-b||_{2}^{2}
 %                       using the ``Method of Hinges" presented in
 %                       ``A Simple New Algorithm for Quadratic Programming 
@@ -46,14 +46,13 @@ if(issparse(A))
         "Use the function hinge_qr_s_lsqnonneg.m instead.")
 end
 [~, n] = size(A);
-num_linsolve = 0;
 active_set = true(n,1);
 tmp = Q.'*b;
 
 
 %% Check if the LSQ is admissible and identify potential issues
 [u,r1] = linsolve(R,tmp,opts);
-num_linsolve = num_linsolve + 1;
+num_linsolve = 1;
     
 % Check if the system is singular. If so, avoid solving it with QR.
 if(r1 < tol)

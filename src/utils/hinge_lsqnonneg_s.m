@@ -1,5 +1,5 @@
-function [x,d,num_linsolve] = hinge_qr_s_lsqnonneg(A,b,tol)
-% HINGE_S_LSQNONNEG   This function computes the nonnegative LSQ problem
+function [x,d,num_linsolve] = hinge_lsqnonneg_s(A,b,tol)
+% HINGE_LSQNONNEG_S   This function computes the nonnegative LSQ problem
 %                       min_{x>=0} ||A*x-b||_{2}^{2}
 %                       using the ``Method of Hinges" presented in
 %                       ``A Simple New Algorithm for Quadratic Programming 

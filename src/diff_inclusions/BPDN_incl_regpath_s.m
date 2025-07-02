@@ -47,7 +47,7 @@ function [sol_x, sol_p, count_NNLS, count_LSQ] = ...
 [m,n] = size(A);
 tol_minus = 1-tol;
 kmax = length(t);
-sol_x = zeros(n,kmax);
+sol_x = sparse(n,kmax);
 sol_p = zeros(m,kmax);  sol_p(:,1) = p0;
 Atop_times_p = (sol_p(:,1).'*A).';
 
@@ -57,6 +57,7 @@ eq_set = (abs(Atop_times_p) >= tol_minus);
 % Compute sign(-A.'*p) and assemble the effective matrix.
 vec_of_signs = sign(-Atop_times_p);
 K = A(:,eq_set).*(vec_of_signs(eq_set).');
+
 
 %% Regularization path
 count_NNLS = 0;
@@ -69,7 +70,7 @@ for k=1:1:kmax
         % min_{u>=0} ||K*u - (b + t*sol_p)||_{2}^{2}
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         rhs = b + t(k)*sol_p(:,k);
-        [u,d,num_linsolve] = hinge_qr_s_lsqnonneg(K,rhs,tol);
+        [u,d,num_linsolve] = hinge_lsqnonneg_s(K,rhs,tol);
 
         count_NNLS = count_NNLS + 1;
         count_LSQ = count_LSQ + num_linsolve;

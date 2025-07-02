@@ -130,7 +130,7 @@ while(true)
     % min_{u>=0} ||K*u - b||_{2}^{2}
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     [v,d,new_eq_set,Q,R,num_linsolve] = ...
-        hinge_qr_lsqnonneg(K,Q,R,b,eq_set,opts,tol);    
+        hinge_lsqnonneg_qr(K,Q,R,b,eq_set,opts,tol);    
 
     count_NNLS = count_NNLS + 1;
     count_LSQ = count_LSQ + num_linsolve;

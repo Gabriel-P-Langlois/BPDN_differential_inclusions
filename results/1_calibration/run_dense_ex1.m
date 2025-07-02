@@ -18,21 +18,16 @@
 
 
 %% Initialization
-use_mlasso = true;
-use_mlinprog = false;
-use_fista = true;
+use_mlasso = false;
+use_mlinprog = true;
+use_fista = false;
+use_homotopy = false;
 
-using_spear = false; % SPEAR datasets
+using_spear = false;
 
 % Nb of samples and features
 m = 2^9;
 n = 2^10;
-
-% Signal-to-noise ratio, value of nonzero coefficients, and
-% proportion of nonzero coefficients in the signal.
-SNR = 1;
-val_nonzero = 1;
-prop = 0.05;
 
 % Tolerance levels
 tol = 1e-08;
@@ -40,15 +35,16 @@ tol_glmnet = 1e-14;
 tol_mlasso = 1e-06;
 tol_fista = 1e-8;
 
-% Grid of hyperparameters
-spacing = -0.01;
-maxval = 0.99;
-minval = 0.0;
-
-
 %% Generate data
-% Set random seed and generate Gaussian data
+% Set random seed
 rng('default')
+
+% Generate gaussian data; specify signal-to-noise ratio, 
+% value of nonzero coefficients, and proportion of nonzero coefficients 
+% in the signal.
+SNR = 1;
+val_nonzero = 1;
+prop = 0.05;
 [A,b,xsol] = generate_gaussian_data(m,n,SNR,val_nonzero,prop);
 
 % Calculate the smallest hyperparameter for which we have the trivial
@@ -58,11 +54,27 @@ x0 = zeros(n,1);
 p0 = -b/t0;
 
 % Generate desired grid of hyperparameters
-t = t0 * (maxval:spacing:minval);
+t = t0 * [logspace(0,-4,m/2),0.0];
 kmax = length(t);
 
 
-%% Solve BPDN using Algorithm 1, MATLAB's native Lasso solver, and FISTA
+%% Solve BPDN using various algorithms
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% BPDN_incl_homotopy algorithm
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if(use_homotopy)
+    total_t = 5*m;
+    disp('0. Running the BPND homotopy solver...')
+    tic
+    [sol_hBPDN_x, sol_hBPDN_p, t, hBPDN_count] = ...
+        BPDN_incl_homotopy(A,b,total_t,tol);
+    time_hBPDN_alg = toc;
+    disp(['Done. Total time = ', num2str(time_hBPDN_alg), ' seconds.'])
+    disp(['Total number of NNLS solves: ', num2str(hBPDN_count), '.'])
+    disp(' ')
+    kmax = length(t);
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Diff. Inclusions: BPDN
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -109,7 +109,7 @@ while(true)
     % Compute the NNLS problem 
     % min_{u>=0} ||K*u - b||_{2}^{2}
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    [v,d,num_linsolve] = hinge_qr_s_lsqnonneg(K,b,tol);  
+    [v,d,num_linsolve] = hinge_lsqnonneg_s(K,b,tol);  
 
     count_NNLS = count_NNLS + 1;
     count_LSQ = count_LSQ + num_linsolve;

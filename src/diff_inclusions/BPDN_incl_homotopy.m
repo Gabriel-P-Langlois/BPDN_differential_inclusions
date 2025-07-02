@@ -1,4 +1,5 @@
-function [sol_x, sol_p, sol_t, k] = BPDN_homotopy_solver(A,b,tol)
+function [sol_x, sol_p, sol_t, count_NNLS, count_LSQ] = ...
+    BPDN_incl_homotopy(A,b,kmax,tol)
 % BP_homotopy_solver    Computes the primal and dual solutions of the 
 %                           BPND problem \{min_{x \in \Rn} ||x||_1 
 %                               + \frac{1}{2t}normsq{Ax-b} \},
@@ -8,6 +9,7 @@ function [sol_x, sol_p, sol_t, k] = BPDN_homotopy_solver(A,b,tol)
 %   Input
 %       A       -   m by n design matrix of the BPDN problem
 %       b       -   m dimensional col data vector of the BPDN problem
+%       kmax    -   Max Nb of points to include in the homotopy algorithm
 %       tol     -   small positive number (e.g., 1e-08)
 %
 %   Output
@@ -19,12 +21,15 @@ function [sol_x, sol_p, sol_t, k] = BPDN_homotopy_solver(A,b,tol)
 %                   corresponding to the hyperparameters found by homotopy.
 %       k       -   Number of nonnegative least-squares solved performed.
 
+%% NOTE:
+% This code is unoptimized; the QR decomposition is performed WITHOUT
+% using rows and columns updates.
+
 
 %% Initialization
 % Options, placeholders and initial conditions
 [m,n] = size(A);
 tol_minus = 1-tol;
-kmax = 200*n;   % Upper bound on the max number of hyperparameters.
 
 sol_t = zeros(1,kmax); sol_t(1) = norm(A.'*b,inf);
 sol_x = zeros(n,kmax);
@@ -36,39 +41,49 @@ eq_set = (abs(Atop_times_p) >= tol_minus);
 
 % Compute sign(-A.'*p) and assemble the effective matrix
 vec_of_signs = sign(-Atop_times_p);
+K = A(:,eq_set).*(vec_of_signs(eq_set).');
+
+% Perform the initial QR decomposition and set the opts field.
+[Q,R] = qr(K,'econ');
+opts.UT = true;
 
 
 %% Compute the trajectory of the slow system in a piecewise fashion
 k = 1;
+count_NNLS = 0;
+count_LSQ = 0;
 while(k <= kmax)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Compute the NNLS problem 
         % min_{uj>=0 if j \in eq_set and xj = 0} ||K*u + t*sol_p||_{2}^{2}
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         rhs = -sol_t(k)*sol_p(:,k);
-        K = A(:,eq_set).*(vec_of_signs(eq_set).');
         ind = find(abs(sol_x(eq_set,k)) < tol);
 
-        [v,xi] = hinge_for_homotopy(K,rhs,ind,tol);
+        [v,xi,num_linsolve] = ...
+           hinge_homotopy_qr(K,Q,R,rhs,ind,opts,tol);
+
+        count_NNLS = count_NNLS + 1;
+        count_LSQ = count_LSQ + num_linsolve;
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Compute tplus and tminus
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
         % Compute the maximal descent direction and tplus
-        Atop_times_d = (xi.'*A).';
-        pos_set = abs(Atop_times_d) > tol;
+        Atop_times_d = A.'*xi;
+        pos_set = find(abs(Atop_times_d) > tol);
         timestep = inf;
 
-        if (any(pos_set))
+        if(~isempty(pos_set))
             term1 = vec_of_signs.*Atop_times_d;
             term2 = vec_of_signs.*Atop_times_p;
             term3 = sign(term1);
             term4 = term3 - term2; 
-    
-            vec = term4(pos_set)./term1(pos_set);
-            timestep = min(vec);
+            vec = term4./term1;    
+            timestep = min(vec(pos_set));
         end
+
         tplus = sol_t(k)/(1 + sol_t(k)*timestep);
 
         % Compute tminus
@@ -108,16 +123,20 @@ while(k <= kmax)
             (1/sol_t(k+1) - 1/sol_t(k))*Atop_times_d;
         vec_of_signs = sign(-Atop_times_p);
 
-        % Update the equicorrelation set
-        eq_set = (abs(Atop_times_p) >= tol_minus);   
+        % Perform updates
+        new_eq_set = (abs(Atop_times_p) >= tol_minus);
+        J = setxor(find(eq_set),find(new_eq_set));
+        eq_set = new_eq_set;        
+        K = A(:,eq_set).*(vec_of_signs(eq_set).');
+        [Q,R] = qr(K,'econ');
 
         % Increment
         k = k + 1;
 end
 
 % Error if there was no convergence. Else, clip the output.
-if(k == kmax)
-    disp('Possible error: convergence not achieved')
+if(k == kmax + 1)
+    disp('Solution path is unfinished -- increase kmax!')
 else
     sol_x(:,k+2:end) = [];
     sol_p(:,k+2:end) = [];
