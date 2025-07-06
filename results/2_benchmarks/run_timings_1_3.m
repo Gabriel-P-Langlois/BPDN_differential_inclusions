@@ -8,12 +8,8 @@
 %   and Tillmann, Andreas M.
 
 
-%% Notes: 
-% This script takes about 32s with 1 repeat to run on GPL's laptop.
-
-
 %% Initialization
-% Options for the inclusions solves
+% Options for the inclusions solvers
 tol = 1e-08;
 
 % Options for GLMNET
@@ -22,15 +18,17 @@ options.alpha = 1;
 options.intr = false;
 options.maxit = 10^8;
 options.standardize = false;
-options.thresh = 0.5e-13;
+options.thresh = 1e-13;
 
 % Options for MATLAB's LASSO
 tol_mlasso = 1e-08;
 
+% Options for the timings
 inst_dense = [147,148,274,421,422,548];
 inst_sparse = [199,200,473,474];
 inst = [inst_dense,inst_sparse];
 repeat = 1;
+
 str = './../../../LOCAL_DATA/l1_testset_data/spear_inst_';
 
 % Run the timings
@@ -103,7 +101,7 @@ for i=1:1:length(inst)
             [~,~, warm_nnls_count, warm_linsolve_count] = ...
                 BP_incl_greedy_s(A,b,tol);
         end
-        time_incl_warm = toc;
+        time_incl_warm = time_incl_warm + toc;
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % GLMNET

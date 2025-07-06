@@ -22,8 +22,9 @@ A = A./sqrt(sum(A.^2));
 
 % Compute ``true" solution
 xsol = zeros(n,1); 
-xsol(randsample(n,floor(n*prop))) = ...
-    val_nonzero.*sign(rand(floor(n*prop),1) - 0.5); 
+population = [-1,0,1];
+ind = randsample(1:n,floor(n*prop));
+xsol(ind) = randsample(population,length(ind),true);
 
 % Generate the noisy observation
 sigma = norm(A*xsol)/sqrt(SNR);

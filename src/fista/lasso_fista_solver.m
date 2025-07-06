@@ -46,16 +46,18 @@ for k=1:1:max_iters
     
     % FISTA Variable update
     tmp1 = x + beta*(x - xminus);
-    tmp2 = p + beta*(p-pminus);
-    tmp1 = tmp1 - ((tau*tmp2).'*A).';
+    tmp2 = tau*(p + beta*(p-pminus));
+    tmp1 = tmp1 - A.'*tmp2;
     
     % Proximal calculation
     xplus = l1_prox_operator(tmp1,tau*t);
-    pplus = A*xplus-b;
+    tmp3 = A*xplus;
+    pplus = tmp3-b;
     
     % Check for convergence
     if(num_iters >= min_iters)
-        stop = norm((-pplus.'*A).',inf) <= t*(1 + tol);
+        %stop = norm((-pplus.'*A).',inf) <= t*(1 + tol);
+        stop = norm(pplus-p) <= tol*norm(p);
         if(stop || (num_iters >= max_iters))
             break;
         end

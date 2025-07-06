@@ -102,7 +102,8 @@ while(k <= kmax)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Check for convergence
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        if(sol_t(k+1) == 0)
+        if(sol_t(k+1)/sol_t(1) < tol)
+            sol_t(k+1) = 0.0;
             sol_x(eq_set,k+1) = sol_x(eq_set,k) + ...
                 (vec_of_signs(eq_set).*v);
             sol_p(:,k+1) = sol_p(:,k);

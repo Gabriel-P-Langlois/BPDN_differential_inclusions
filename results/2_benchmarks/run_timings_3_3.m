@@ -13,10 +13,10 @@
 
 %% Initialization
 % Tolerance levels
-tol_fista = 1e-03;
+tol_fista = 1e-08;
 
 inst_dense = [147,148,274,421,422,548];
-inst_sparse = [173,174,447,448,199,200,473,474];
+inst_sparse = [199,200,473,474];
 inst = [inst_dense,inst_sparse];
 repeat = 1;
 str = './../../../LOCAL_DATA/l1_testset_data/spear_inst_';
@@ -32,7 +32,7 @@ for i=1:1:length(inst)
     % primal solution (zero) and dual solution
     t0 = norm(A.'*b,inf);
     x0 = zeros(n,1);
-    p0 = -b/t0;
+    p0 = full(-b/t0);
     data_is_sparse = issparse(A);
         
     % Generate desired grid of hyperparameters
@@ -43,10 +43,12 @@ for i=1:1:length(inst)
     end
     kmax = length(t);
 
+    % Invoke FISTA
     tic
     L22 = svds(A,1)^2;
     tau = 1/L22;
     time_fista = toc;
+    vecA2 = vecnorm(A,2);
 
     for j=1:1:repeat
         sol_fista_x = zeros(n,kmax);
@@ -66,8 +68,9 @@ for i=1:1:length(inst)
         % 2 <= k <= kmax-1 (t = 0 at kmax)
         for k=2:1:kmax-1
             % Selection rule
-            ind = lasso_screening_rule(t(k)/t(k-1),sol_fista_p(:,k-1),A);
-    
+            Atimesp = A.'*sol_fista_p(:,k-1);
+            ind = lasso_screening_rule(t(k)/t(k-1),sol_fista_p(:,k-1),vecA2,Atimesp);
+            
             % Compute solution
             [sol_fista_x(ind,k),sol_fista_p(:,k),num_iters] = ...
                 lasso_fista_solver(sol_fista_x(ind,k-1),sol_fista_p(:,k-1),t(k),...

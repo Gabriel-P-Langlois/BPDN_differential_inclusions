@@ -65,51 +65,5 @@ disp(['Done. Total time = ', num2str(time_incl_alg), ' seconds.'])
 disp(['Total number of NNLS solves: ', num2str(count), '.'])
 disp(' ')
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%
-% FISTA + selection rule
-%%%%%%%%%%%%%%%%%%%%%%%%%
-if(use_fista)
-    sol_fista_x = zeros(n,kmax);
-    sol_fista_p = zeros(m,kmax);
-    max_iters = 50000;
-    min_iters = 100;
-
-    % Compute the L22 norm of the matrix A and tau parameter for FISTA
-    disp('Running FISTA algorithm...')
-    tic
-    L22 = svds(A,1)^2;
-    time_fista_L22 = toc;
-    
-    % Computer some parameters and options for FISTA
-    tau = 1/L22;
-    
-    % Run the FISTA solver and rescale the dual solution
-    tic
-    
-    % k == 1
-    [sol_fista_x(:,1),sol_fista_p(:,1),num_iters] = ...
-            lasso_fista_solver(x0,p0,t(1),...
-            A,b,tau,max_iters,tol_fista,min_iters);
-    sol_fista_p(:,1) = sol_fista_p(:,1)/t(1);
-    
-    % k >= 2
-    for k=2:1:kmax
-        % Selection rule
-        ind = lasso_screening_rule(t(k)/t(k-1),sol_fista_p(:,k-1),A);
-    
-        % Compute solution
-        [sol_fista_x(ind,k),sol_fista_p(:,k),num_iters] = ...
-            lasso_fista_solver(sol_fista_x(ind,k-1),sol_fista_p(:,k-1),t(k),...
-            A(:,ind),b,tau,max_iters,tol_fista,min_iters);
-        sol_fista_p(:,k) = sol_fista_p(:,k)/t(k);
-    end
-    time_fista_alg = toc;
-    time_fista_total = time_fista_alg + time_fista_L22;
-    disp(['Done. Total time = ', num2str(time_fista_total), ' seconds.'])
-    disp(' ')
-end
-
-
 % Set summarize flag to true
 summarize_2000_20000_regpath = true;

@@ -1,4 +1,4 @@
-function ind = lasso_screening_rule(ratio,p,A)
+function ind = lasso_screening_rule(ratio,p,vecA2,Atimesp)
 % lasso_screening_rule      Computes a set of indices {1,\dots,n} over 
 %                           which the solution is guaranteed to land on.
 %                           This uses an improved version of the LASSO
@@ -13,7 +13,8 @@ function ind = lasso_screening_rule(ratio,p,A)
 %       ratio   -   ratio of tnext/t positive hyperparameters
 %       p       -   m dimensional col vector. Previous dual solution at
 %                   parameter t.
-%       A       -   m by n design matrix of the LASSO problem.
+%       vecA2   -   1 by n vector vecnorm(A,2)
+%       Atimesp -   A.'*p;
 %
 %   Output
 %       ind     -   n-dim col vector of boolean values. An entry is true
@@ -22,8 +23,9 @@ function ind = lasso_screening_rule(ratio,p,A)
 
 
 % Compute the lhs and rhs of the criterion and compare them.
-lhs = abs((p.'*A).') - 1e-08;   
-rhs = ratio*(ratio-(vecnorm(A,2).'*norm(p)*(1-ratio)));
+lhs = abs(Atimesp) - 1e-08;   
+tmp2 = norm(p)*(1-ratio)/ratio;
+rhs = ratio*ratio * (1- vecA2*tmp2);
     
-ind = lhs >= rhs;
+ind = lhs >= rhs.';
 end
