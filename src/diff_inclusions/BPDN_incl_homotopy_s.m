@@ -1,29 +1,48 @@
 function [sol_x, sol_p, sol_t, count_NNLS, count_LSQ] = ...
     BPDN_incl_homotopy_s(A,b,kmax,tol)
-% BP_incl_homotopy_s    Computes the primal and dual solutions of the 
-%                           BPND problem \{min_{x \in \Rn} ||x||_1 
+% BPDN_INCL_HOMOTOPY_S  Computes the primal and dual solutions of the 
+%                       BPND problem 
+%                           \{min_{x \in \Rn} ||x||_1 
 %                               + \frac{1}{2t}normsq{Ax-b} \},
-%                           up to the tolerance level tol, via homotopy
-%                           using the minimal selection principle
 %
-%                       1. The data (A,b) is assumed to be sparse.
+%                       up to the tolerance level tol, via homotopy
+%                       using the minimal selection principle (Algorithm 2 
+%                       in [Langlois, Darbon]).
 %
-%   Input
-%       A       -   m by n design matrix of the BPDN problem
-%       b       -   m dimensional col data vector of the BPDN problem
-%       kmax    -   Max Nb of points to include in the homotopy algorithm
-%       tol     -   small positive number (e.g., 1e-08)
 %
-%   Output
-%       sol_x   -   (n,k) primal solution to BP at hyperparameter t and data
-%                   (A,b) within tolerance level tol.
-%       sol_p   -   (m,k) dual solutions to BPDN at hyperparameter t and 
-%                   data (A,b) within tolerance level tol.
-%       sol_t   -   (k,1)-dimensional vector of positive numbers t,
-%                   corresponding to the hyperparameters found by homotopy.
-%       count_NNLS  -   Number of NNLS calls.
+% INPUT:
+%   A       -   m by n design matrix of the BPDN problem. Must be
+%               SPARSE.
+%   b       -   m dimensional col data vector of the BPDN problem
+%   kmax    -   Max Nb of points to include in the homotopy algorithm
+%   tol     -   small positive number (e.g., 1e-08)
 %
-%       count_LSQ   -   Total number of LSQ solves
+% OUTPUT:
+%   sol_x   -   (n,k) primal solution to BP at hyperparameter t and data
+%               (A,b) within tolerance level tol.
+%   sol_p   -   (m,k) dual solutions to BPDN at hyperparameter t and 
+%               data (A,b) within tolerance level tol.
+%   sol_t   -   (k,1)-dimensional vector of positive numbers t,
+%               corresponding to the hyperparameters found by homotopy.
+%   count_NNLS  -   Number of NNLS calls.
+%
+%   count_LSQ   -   Total number of LSQ solves
+%
+% AUTHORS:
+%   The algorithm was designed by Gabriel P. Langlois and Jérôme Darbon.
+%   This code was written by Gabriel P. Langlois
+%
+% REFERENCES:
+%   Langlois, G. P., & Darbon, J. (2025). Exact and efficient basis pursuit
+%   denoising via differential inclusions and a selection principle. 
+%   arXiv preprint arXiv:2507.05562.
+
+
+%% Checks
+if(~issparse(A))
+    error("The matrix A is dense. " + ...
+        "Use BP_INCL_HOMOTOPY instead.")
+end
 
 
 %% Initialization
@@ -132,5 +151,73 @@ else
     sol_x(:,k+2:end) = [];
     sol_p(:,k+2:end) = [];
     sol_t(:,k+2:end) = [];
+end
+
+function [x,d,num_linsolve] = hinge_homotopy_s(A,b,ind,tol)
+% HINGE_HOMOTOPY_S   This function computes the nonnegative LSQ problem
+%
+%                       min_{x \in \Rn} ||A*x-b||_{2}^{2}
+%                       subject to xj >= 0 if j \in ind 
+%
+%                       using the ``Method of Hinges" presented in
+%                       ``A Simple New Algorithm for Quadratic Programming 
+%                       with Applications in Statistics" by Mary C. Meyers.
+%
+% INPUT:
+%   A           -   (m x l)-dimensional design matrix A
+%   b           -   m-dimensional col data vector.
+%   ind         -   ind \coloneqq \subset {1,...l}
+%   tol         -   small number specifying the tolerance
+%                   (e.g., 1e-08).
+%
+% OUTPUT:
+%   x   -   l-dimensional col solution vector of nonzero
+%           coefficients to the NNLS problem.
+%   d   -   m-dimensional col residual vector d = A*x - b
+%   num_linsolve     - Number of times linsolve is called
+
+
+%% Check if the matrix is sparse
+if(~issparse(A))
+    error("The matrix A is dense. " + ...
+        "Use the function hinge_qr_lsqnonneg.m instead.")
+end
+
+%% Check if the LSQ is admissible; if so, return it
+u = A\b; x = u;
+num_linsolve = 1;
+if(isempty(ind) || min(u(ind)) > tol)
+    d = A*u - b;
+    return;
+end
+
+%% Compute the NNLS solutions via Meyers algorithm
+[~, n] = size(A);
+active_set = true(n,1);
+while(true)
+    if(min(x(ind)) < -tol)  % Check if the primal constraint is violated.
+        [~,J] = min(x(ind));
+        I = ind(J);
+        active_set(I) = false;
+    else                    % Check if the dual constraint is violated.
+        theta = A(:,active_set)*u;
+        rho = b - theta;
+        tmp = rho.'*A;
+        [val,J] = max(tmp(ind));
+        I = ind(J);
+        if(val > tol)
+            active_set(I) = true;
+        else
+            break;
+        end
+    end
+
+    % Compute the solution to A(:,eqset)*u = b and continue.
+    u = A(:,active_set)\b;
+    num_linsolve = num_linsolve +1;
+
+    x = zeros(n,1); x(active_set) = u;
+    d = A(:,active_set)*u-b;
+end
 end
 end

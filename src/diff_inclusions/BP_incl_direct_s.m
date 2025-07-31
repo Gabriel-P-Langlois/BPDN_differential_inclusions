@@ -26,6 +26,14 @@ function [sol_x, sol_p, count_NNLS, count_LSQ] = ...
 %
 %       count_LSQ   -   Total number of LSQ solves
 
+% AUTHORS:
+%   The algorithm was designed by Gabriel P. Langlois and Jérôme Darbon.
+%   This code was written by Gabriel P. Langlois
+%
+% REFERENCES:
+%   Langlois, G. P., & Darbon, J. (2025). Exact and efficient basis pursuit
+%   denoising via differential inclusions and a selection principle. 
+%   arXiv preprint arXiv:2507.05562.
 
 %% Initialization
 [~,n] = size(A);

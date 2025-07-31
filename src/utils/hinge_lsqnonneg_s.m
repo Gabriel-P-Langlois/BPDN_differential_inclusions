@@ -4,16 +4,15 @@ function [x,d,num_linsolve] = hinge_lsqnonneg_s(A,b,tol)
 %                       using the ``Method of Hinges" presented in
 %                       ``A Simple New Algorithm for Quadratic Programming 
 %                       with Applications in Statistics" by Mary C. Meyers.
+%                       Suitable for sparse matrices.
 %
-%                   1) Suitable for sparse matrices.
-%
-%   Input
+%   INPUT:
 %           A           -   (m x n)-dimensional sparse matrix A
 %           b           -   m-dimensional sparse col data vector.
 %           tol         -   small number specifying the tolerance
 %                           (e.g., 1e-08).
 %
-%   Output
+%   OUTPUT:
 %           x   -   n-dimemsional solution vector to the NNLS problem.
 %           d   -   m-dimensional col residual vector d = A*x-b
 %           num_linsolve     - Number of times linsolve is called

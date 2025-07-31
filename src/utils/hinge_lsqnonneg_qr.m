@@ -13,7 +13,7 @@ function [x,d,eq_set,Q,R,num_linsolve] = ...
 %
 %                   2) This function works with dense matrices only.
 %
-%   Input
+% INPUT:
 %           A           -   (m x n)-dimensional dense matrix A
 %           Q           -   (m x n)-dimensional, non-economic
 %                           orthogonal matrix obtained from the QR
@@ -30,7 +30,7 @@ function [x,d,eq_set,Q,R,num_linsolve] = ...
 %           tol         -   small number specifying the tolerance
 %                           (e.g., 1e-08).
 %
-%   Output
+% OUTPUT:
 %           x   -   n-dimemsional solution vector to the NNLS problem.
 %           d   -   m-dimensional col residual vector d = A*x-b
 %           eq_set      -   Updated equicorrelation set of the BPDN problem

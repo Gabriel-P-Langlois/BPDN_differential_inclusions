@@ -1,29 +1,51 @@
 function [sol_x, sol_p, sol_t, count_NNLS, count_LSQ] = ...
     BPDN_incl_homotopy(A,b,kmax,tol)
-% BP_homotopy_solver    Computes the primal and dual solutions of the 
-%                           BPND problem \{min_{x \in \Rn} ||x||_1 
-%                               + \frac{1}{2t}normsq{Ax-b} \},
-%                           up to the tolerance level tol, via homotopy
-%                           using the minimal selection principle
+% BP_INCL_HOMOTOPY  Computes the primal and dual solutions of the 
+%                   BPND problem:
 %
-%   Input
-%       A       -   m by n design matrix of the BPDN problem
-%       b       -   m dimensional col data vector of the BPDN problem
-%       kmax    -   Max Nb of points to include in the homotopy algorithm
-%       tol     -   small positive number (e.g., 1e-08)
+%                     \{min_{x \in \Rn} ||x||_1 
+%                           + \frac{1}{2t}normsq{Ax-b} \},
 %
-%   Output
-%       sol_x   -   (n,k) primal solution to BP at hyperparameter t and data
+%                   up to the tolerance level tol, via homotopy
+%                   using the minimal selection principle (Algorithm 2 in
+%                   [Langlois, Darbon]).
+%
+% INPUT:
+%   A       -   m by n design matrix of the BPDN problem. 
+%               MUST BE DENSE.
+%   b       -   m dimensional col data vector of the BPDN problem
+%   kmax    -   Max Nb of points to include in the homotopy algorithm
+%   tol     -   small positive number (e.g., 1e-08)
+%
+% OUTPUT:
+%   sol_x   -   (n,k) primal solution to BP at hyperparameter t and data
 %                   (A,b) within tolerance level tol.
-%       sol_p   -   (m,k) dual solutions to BPDN at hyperparameter t and 
+%   sol_p   -   (m,k) dual solutions to BPDN at hyperparameter t and 
 %                   data (A,b) within tolerance level tol.
-%       sol_t   -   (k,1)-dimensional vector of positive numbers t,
+%   sol_t   -   (k,1)-dimensional vector of positive numbers t,
 %                   corresponding to the hyperparameters found by homotopy.
-%       k       -   Number of nonnegative least-squares solved performed.
+%   k       -   Number of nonnegative least-squares solved performed.
+%
+% AUTHORS:
+%   The algorithm was designed by Gabriel P. Langlois and Jérôme Darbon.
+%   This code was written by Gabriel P. Langlois
+%
+% REFERENCES:
+%   Langlois, G. P., & Darbon, J. (2025). Exact and efficient basis pursuit
+%   denoising via differential inclusions and a selection principle. 
+%   arXiv preprint arXiv:2507.05562.
+
 
 %% NOTE:
 % This code is unoptimized; the QR decomposition is performed WITHOUT
 % using rows and columns updates.
+
+
+%% Checks
+if(issparse(A))
+    error("The matrix A is sparse. " + ...
+        "Use BP_INCL_HOMOTOPY_S instead.")
+end
 
 
 %% Initialization
@@ -142,5 +164,85 @@ else
     sol_x(:,k+2:end) = [];
     sol_p(:,k+2:end) = [];
     sol_t(:,k+2:end) = [];
+end
+
+
+%% UTILITY FUNCTION
+function [x,d,num_linsolve] = hinge_homotopy_qr(A,Q,R,b,ind,opts,tol)
+% HINGE_HOMOTOPY_QR  This function computes the nonnegative LSQ problem
+%
+%                    min_{x \in \Rn} ||A*x-b||_{2}^{2}
+%                    subject to xj >= 0 if j \in ind 
+%                       
+%                    using the ``Method of Hinges" presented in
+%                    ``A Simple New Algorithm for Quadratic Programming 
+%                    with Applications in Statistics" by Mary C. Meyers.
+%
+% INPUT:
+%   A           -   (m x l)-dimensional design matrix A
+%   Q           -   (m x n)-dimensional, non-economic
+%                   orthogonal matrix obtained from the QR
+%                   decomposition [Q,R] = qr(A).
+%   R           -   (n x n)-dimensional, economic form of the
+%                   upper triangular matrix obtained from the QR
+%                   decomposition [Q,R] = qr(A,"econ","vector")
+%   b           -   m-dimensional col data vector.
+%   ind         -   ind \coloneqq \subset {1,...l}
+%   opts        -   opts field for the linsolve function.
+%   tol         -   small number specifying the tolerance
+%                   (e.g., 1e-08).
+%
+% OUTPUT:
+%   x   -   l-dimensional col solution vector of nonzero
+%           coefficients to the NNLS problem.
+%   d   -   m-dimensional col residual vector d = A*x - b
+%   num_linsolve     - Number of times linsolve is called
+
+
+%% Initialization
+[~, n] = size(A);
+active_set = true(n,1);
+
+
+%% Check if the LSQ is admissible; if so, return it
+tmp = Q.'*b;
+u = linsolve(R,tmp,opts);
+num_linsolve = 1;
+x = u;
+d = A*u - b;
+
+if(isempty(ind) || min(u(ind)) > tol)
+    return;
+end
+
+
+%% Compute the NNLS solutions via Meyers algorithm
+while(true)
+    if(min(x(ind)) < -tol)  % Check if the primal constraint is violated.
+        [~,J] = min(x(ind));
+        I = ind(J);
+        active_set(I) = false;
+    else                    % Check if the dual constraint is violated.
+        theta = A(:,active_set)*u;
+        rho = b - theta;
+        tmp2 = rho.'*A;
+        [val,J] = max(tmp2(ind));
+        I = ind(J);
+        if(val > tol)
+            active_set(I) = true;
+        else
+            break;
+        end
+    end
+
+    % Compute the solution to A(:,eqset)*u = b and continue.
+        [Q,R] = qr(A(:,active_set),'econ');
+    tmp = Q.'*b;
+    [u,~] = linsolve(R,tmp,opts);
+    num_linsolve = num_linsolve + 1;
+
+    x = zeros(n,1); x(active_set) = u;
+    d = A(:,active_set)*u-b;
+end
 end
 end

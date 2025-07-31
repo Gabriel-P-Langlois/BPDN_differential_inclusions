@@ -1,5 +1,8 @@
 function Vprimal = primal_obj_fun(x,t,A,b)
-%PRIMAL_OBJ_FUN 
+% PRIMAL_OBJ_FUN    Computes the primal objective function of the basis
+%                   pursuit denoising problem with t>0.
+%
+%                   (0.5/t)*norm(A*x-b)^2 + ||x||_{1}.
 kmax = length(t);
 Vprimal = zeros(kmax,1);
 for i=1:1:kmax-1

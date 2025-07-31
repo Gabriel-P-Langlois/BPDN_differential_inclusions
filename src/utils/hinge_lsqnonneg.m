@@ -10,15 +10,15 @@ function [x,d] = hinge_lsqnonneg(A,b,tol)
 %                   the least-squares solution u = (A.'*A)^{-1}(A.'*b),
 %                   which is given as input to this algorithm.
 %
-%   Input
-%           A           -   (m x n)-dimensional design matrix A
-%           b           -   m-dimensional col data vector.
-%           tol         -   small number specifying the tolerance
-%                           (e.g., 1e-08).
+% INPUT:
+%   A           -   (m x n)-dimensional design matrix A
+%   b           -   m-dimensional col data vector.
+%   tol         -   small number specifying the tolerance
+%                   e.g., 1e-08).
 %
-%   Output
-%           x   -   n-dimemsional solution vector to the NNLS problem.
-%           d   -   m-dimensional residual vector d = A*x-b
+% OUTPUT:
+%   x   -   n-dimemsional solution vector to the NNLS problem.
+%   d   -   m-dimensional residual vector d = A*x-b
 
 
 %% Algorithm: Method of Hinges
