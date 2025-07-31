@@ -37,7 +37,7 @@ tol_fista = 1e-8;
 
 
 %% Generate data
-load './../../../LOCAL_DATA/l1_testset_data/spear_inst_548.mat'
+load './../../data/l1_testset_data/spear_inst_548.mat'
 [m,n] = size(A);
 
 % Calculate the smallest hyperparameter for which we have the trivial

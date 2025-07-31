@@ -17,7 +17,7 @@ inst_sparse = [199,200,473,474];
 inst = [inst_dense,inst_sparse];
 repeat = 1;
 
-str = './../../../LOCAL_DATA/l1_testset_data/spear_inst_';
+str = './../../data/l1_testset_data/spear_inst_';
 
 % Run the timings
 disp('Running timings and counts for each instance...')
