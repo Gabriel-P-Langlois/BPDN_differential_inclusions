@@ -6,3 +6,4 @@
     The ./results folder contains subdirectories containing several numerical results. 
     These subdirectories contain runall.m files that you run from the project directory. 
 
+WIP: This repository will be updated continually...
